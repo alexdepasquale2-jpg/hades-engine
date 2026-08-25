@@ -22,6 +22,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `RwwBus` | §9 M10 | In-memory + NATS JetStream (`TBC_RWW` stream) |
 | `transport` | §10 | Framed JSON reliable + 36-byte move datagrams |
 | `VerbPolicies` | M13 | Attack/interact from ruleset JSON, conservation inventory |
+| `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
 | Debug server | §10 | HTTP + WebSocket — cluster **6014**, shard-00 **6020**, shard-01 **6021** |
 | QUIC gateway | §10 M12 | TLS/mTLS QUIC **4433**, ops HTTP **9443** |
