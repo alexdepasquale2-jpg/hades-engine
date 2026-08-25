@@ -135,7 +135,7 @@ cargo test -p tbc-engine shard_multinode
 cargo test -p tbc-engine ops_health
 cargo test -p tbc-engine gameplay_ruleset
 cargo test -p tbc-engine npmr_dream
-cargo test -p tbc-engine psi_social
+cargo test -p tbc-engine consent_wire
 cargo test -p tbc-engine assist
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
