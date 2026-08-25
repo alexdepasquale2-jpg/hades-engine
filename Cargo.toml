@@ -1,5 +1,5 @@
 [workspace]
-members = ["tbc-engine", "tbc-server"]
+members = ["tbc-engine", "tbc-server", "tbc-gateway"]
 resolver = "2"
 
 [workspace.package]

@@ -1,6 +1,7 @@
 const SCALE = 3;
 const ORIGIN_X = 450;
 const ORIGIN_Y = 300;
+const SHARD_SEAM_X = 0;
 
 let session = { iuoc: null, fwau: null, band: "Settled", frame: "pmr.v1" };
 let entities = [];
@@ -9,6 +10,7 @@ let ws = null;
 let moveVec = { dx: 0, dy: 0 };
 let clientTick = 0;
 let isNpmr = false;
+let shardId = null;
 
 const canvas = document.getElementById("world");
 const ctx = canvas.getContext("2d");
@@ -18,6 +20,7 @@ document.getElementById("btn-psi").addEventListener("click", () => queryPsi("Fut
 document.getElementById("btn-past").addEventListener("click", () => queryPsi("PastOwn"));
 document.getElementById("btn-npmr").addEventListener("click", () => handoff("npmr.academy.v1"));
 document.getElementById("btn-pmr").addEventListener("click", () => handoff("pmr.v1"));
+document.getElementById("btn-unbind").addEventListener("click", unbindDeath);
 
 window.addEventListener("keydown", (e) => {
   keys[e.code] = true;
@@ -66,6 +69,7 @@ async function login() {
     `IUOC ${data.iuoc.toString().slice(0, 8)}…`;
   document.getElementById("frame-name").textContent = data.frame;
   setBand(data.quality_band);
+  clearOffers();
   connectWs();
 }
 
@@ -130,6 +134,65 @@ async function queryPsi(scope) {
   }
 }
 
+function clearOffers() {
+  document.getElementById("offer-list").innerHTML = "";
+}
+
+function showOffers(offers) {
+  const list = document.getElementById("offer-list");
+  list.innerHTML = "";
+  if (!offers || offers.length === 0) return;
+  offers.forEach((o) => {
+    const li = document.createElement("li");
+    const btn = document.createElement("button");
+    btn.className = "offer-btn";
+    btn.textContent = `${o.title} (shard ${o.start_shard})`;
+    btn.title = o.situation;
+    btn.addEventListener("click", () => acceptOffer(o.template_id));
+    li.appendChild(btn);
+    const meta = document.createElement("span");
+    meta.className = "offer-meta";
+    meta.textContent = `${o.faction} · ${o.odds_label}`;
+    li.appendChild(meta);
+    list.appendChild(li);
+  });
+}
+
+async function unbindDeath() {
+  if (!session.fwau) return;
+  const res = await fetch("/api/unbind", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau }),
+  });
+  const data = await res.json();
+  session.fwau = null;
+  flash("reject-flash", data.message || "Unbound");
+  showOffers(data.offers);
+}
+
+async function acceptOffer(templateId) {
+  if (!session.iuoc) return;
+  const res = await fetch("/api/reincarnate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ iuoc: session.iuoc, template_id: templateId }),
+  });
+  const data = await res.json();
+  if (data.fwau) {
+    session.fwau = data.fwau;
+    session.frame = data.frame;
+    isNpmr = data.frame.includes("npmr");
+    document.getElementById("frame-name").textContent = data.frame;
+    setBand(data.quality_band);
+    clearOffers();
+    flash("correction-flash", data.message);
+    if (!ws || ws.readyState !== WebSocket.OPEN) connectWs();
+  } else {
+    flash("reject-flash", data.message);
+  }
+}
+
 function connectWs() {
   const proto = location.protocol === "https:" ? "wss:" : "ws:";
   ws = new WebSocket(`${proto}//${location.host}/ws`);
@@ -147,6 +210,16 @@ function flash(elId, text) {
   if (text) el.textContent = text;
   el.classList.remove("hidden");
   setTimeout(() => el.classList.add("hidden"), 800);
+}
+
+function updateProfiler(prof) {
+  if (!prof) return;
+  document.getElementById("island-count").textContent = prof.island_count;
+  document.getElementById("island-steps").textContent = prof.total_steps_last_tick;
+  document.getElementById("island-max").textContent = prof.max_steps_per_island;
+  const budgetEl = document.getElementById("island-budget");
+  budgetEl.textContent = prof.within_budget ? "OK" : "OVER";
+  budgetEl.className = prof.within_budget ? "budget-ok" : "budget-over";
 }
 
 function onSnapshot(snap) {
@@ -168,6 +241,10 @@ function onSnapshot(snap) {
   document.getElementById("tick").textContent = snap.tick;
   document.getElementById("entity-count").textContent = entities.length;
   isNpmr = (snap.ruleset_id || "").includes("npmr");
+  shardId = snap.shard_id;
+  document.getElementById("shard-id").textContent =
+    shardId != null ? `shard-${shardId}` : (isNpmr ? "NPMR" : "—");
+  updateProfiler(snap.island_profiler);
   draw();
 }
 
@@ -180,6 +257,7 @@ async function pollStatus() {
       document.getElementById("tick").textContent = data.tick;
       document.getElementById("entity-count").textContent = data.entities;
     }
+    updateProfiler(data.island_profiler);
   } catch (_) {}
 }
 
@@ -201,6 +279,22 @@ function draw() {
     ctx.moveTo(0, y);
     ctx.lineTo(canvas.width, y);
     ctx.stroke();
+  }
+
+  // PMR shard seam at world x=0
+  if (!isNpmr) {
+    const seamPx = ORIGIN_X + SHARD_SEAM_X * SCALE;
+    ctx.strokeStyle = "rgba(250, 204, 21, 0.55)";
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 6]);
+    ctx.beginPath();
+    ctx.moveTo(seamPx, 0);
+    ctx.lineTo(seamPx, canvas.height);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(250, 204, 21, 0.7)";
+    ctx.font = "10px sans-serif";
+    ctx.fillText("shard seam", seamPx + 4, 16);
   }
 
   const player = entities.find((e) => e.is_player);
@@ -235,7 +329,10 @@ function draw() {
 
   ctx.fillStyle = "#7d8da1";
   ctx.font = "11px sans-serif";
-  const label = isNpmr ? "NPMR-Academy · blink enabled" : "PMR-Prime · server-authoritative";
+  const shardLabel = shardId != null ? `shard-${shardId}` : "NPMR";
+  const label = isNpmr
+    ? "NPMR-Academy · blink enabled"
+    : `PMR ${shardLabel} · walk → to cross seam`;
   ctx.fillText(label, 12, canvas.height - 10);
 }
 

@@ -1,17 +1,19 @@
-use crate::beam::{BranchEntity, IslandState, ProbabilitySurface, ObservationResult};
+use crate::beam::{ObservationResult};
 use crate::clock::DeltaTClock;
 use crate::ecs::World;
 use crate::grid::HierGrid;
+use crate::islands::IslandManager;
 use crate::intent::{Intent, IntentQueue, Verb};
 use crate::iuoc::{EntityRef, IuocRegistry};
 use crate::ledger::{EntropyLedger, ResolvedAction};
 use crate::netcode::{Correction, EntityPose, IntentReject, NetcodeState};
 use crate::ruleset::Ruleset;
+use crate::shard::ShardBounds;
 use crate::types::{
   Entity, FwauId, FrameId, IslandId, IuocId, Tick, Vec3,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 pub struct FrameSpec {
@@ -45,6 +47,8 @@ pub struct FrameSnapshot {
   pub ai_count: usize,
   pub corrections: Vec<Correction>,
   pub rejects: Vec<RejectNotice>,
+  pub island_profiler: Option<crate::islands::IslandProfiler>,
+  pub shard_id: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -73,31 +77,42 @@ pub struct Frame {
   pub clock: DeltaTClock,
   pub world: World,
   pub grid: HierGrid,
-  pub islands: HashMap<IslandId, ProbabilitySurface>,
+  pub island_mgr: IslandManager,
   pub intent_queues: HashMap<FwauId, IntentQueue>,
   pub netcode: NetcodeState,
+  pub shard_bounds: Option<ShardBounds>,
+  pub pending_shard_handoffs: Vec<(FwauId, u32)>,
   pub rng_seed: u64,
   pub stall_count: u32,
   sleep_delay_ticks: u64,
   player_last_pos: HashMap<FwauId, Vec3>,
+  was_awake: HashSet<Entity>,
 }
 
 impl Frame {
   pub fn new(spec: FrameSpec) -> Self {
+    Self::new_with_shard(spec, None)
+  }
+
+  pub fn new_with_shard(spec: FrameSpec, shard_bounds: Option<ShardBounds>) -> Self {
     let dt_ms = spec.ruleset.dt_ms as u64;
     let sleep_delay_ticks = (spec.ruleset.sleep.delay_s * 1000.0 / dt_ms as f32) as u64;
+    let rng_seed = 0xA00 + shard_bounds.as_ref().map(|s| s.id as u64).unwrap_or(0);
     Self {
       clock: DeltaTClock::new(dt_ms),
       spec,
       world: World::new(),
       grid: HierGrid::new(),
-      islands: HashMap::new(),
+      island_mgr: IslandManager::new(rng_seed),
       intent_queues: HashMap::new(),
       netcode: NetcodeState::new(),
-      rng_seed: 0xA00,
+      shard_bounds,
+      pending_shard_handoffs: Vec::new(),
+      rng_seed,
       stall_count: 0,
       sleep_delay_ticks,
       player_last_pos: HashMap::new(),
+      was_awake: HashSet::new(),
     }
   }
 
@@ -108,14 +123,14 @@ impl Frame {
   pub fn spawn_demo_world(&mut self, ai_count: usize) {
     for i in 0..ai_count {
       let angle = (i as f32) * 0.5;
+      let base_x = self.shard_bounds.as_ref().map(|s| (s.min_x + s.max_x) / 2.0).unwrap_or(0.0);
       let pos = Vec3::new(
-        (angle.cos() * 50.0) + (i as f32 * 3.0),
+        base_x + (angle.cos() * 50.0) + (i as f32 * 3.0),
         angle.sin() * 50.0,
         0.0,
       );
       let e = self.world.spawn_ai_guy(&format!("AI-Guy-{}", i), pos, i as u64 + 1);
       self.grid.insert_entity(e, pos, 1);
-      self.ensure_island_for_entity(e);
     }
   }
 
@@ -144,26 +159,7 @@ impl Frame {
       .bind_fwau(iuoc, fwau_id, avatar_ref, self.now())
       .map_err(|e| format!("{:?}", e))?;
 
-    self.ensure_island_for_entity(entity);
     Ok(fwau_id)
-  }
-
-  fn ensure_island_for_entity(&mut self, entity: Entity) {
-    let island_id = IslandId(entity.index as u64 + 1);
-    if !self.islands.contains_key(&island_id) {
-      let present = IslandState {
-        entities: vec![BranchEntity {
-          id: entity.index,
-          x: 0.0,
-          y: 0.0,
-          vx: 1.0,
-          vy: 0.0,
-        }],
-        tick: self.clock.tick.0,
-      };
-      let surface = ProbabilitySurface::new(island_id, present, self.rng_seed + island_id.0);
-      self.islands.insert(island_id, surface);
-    }
   }
 
   pub fn submit_intent(&mut self, intent: Intent) -> Result<(), IntentReject> {
@@ -349,9 +345,7 @@ impl Frame {
     }
 
     if advance_beams {
-      for surface in self.islands.values_mut() {
-        surface.advance(None);
-      }
+      // Beam advance handled by IslandManager in step_once
     }
   }
 
@@ -374,12 +368,13 @@ impl Frame {
     }
 
     self.apply_move_intents(&all_intents);
-    self.integrate_physics(true);
+    self.integrate_physics(false);
     self.update_sleep_states();
+    self.step_islands_and_observe();
 
     for intent in &all_intents {
       if intent.verb == Verb::Attack {
-        if let Some(iuoc) = self.fwau_from_intent(intent.fwau) {
+        if let Some(iuoc) = self.iuoc_for_fwau(intent.fwau) {
           let action = ResolvedAction {
             id: intent.seq as u128,
             aid: 0.0,
@@ -394,8 +389,66 @@ impl Frame {
     }
 
     ledger.flush_due(tick);
+    self.check_shard_boundaries();
     self.store_tick_snapshot(tick);
     self.netcode.clear_pending_through(tick);
+  }
+
+  fn step_islands_and_observe(&mut self) {
+    let awake: HashSet<Entity> = self
+      .world
+      .all_entities()
+      .into_iter()
+      .filter(|e| self.world.get(*e).map(|r| r.sleep.awake).unwrap_or(false))
+      .collect();
+
+    for entity in &awake {
+      if !self.was_awake.contains(entity) {
+        self.island_mgr.queue_observe_entity(*entity);
+      }
+    }
+    self.was_awake = awake.clone();
+
+    let positions: Vec<(Entity, Vec3)> = self
+      .world
+      .all_entities()
+      .iter()
+      .filter_map(|&e| {
+        self
+          .world
+          .get(e)
+          .filter(|r| r.sleep.awake)
+          .map(|r| (e, r.transform.position))
+      })
+      .collect();
+
+    self.island_mgr.rebuild_from_positions(&positions, &awake);
+    self.island_mgr.advance_all(None);
+    self.island_mgr.collapse_observations();
+  }
+
+  fn check_shard_boundaries(&mut self) {
+    if self.shard_bounds.is_none() {
+      return;
+    }
+    let bounds = self.shard_bounds.as_ref().unwrap();
+    for fwau in self.intent_queues.keys().copied().collect::<Vec<_>>() {
+      if let Some(e) = self.find_avatar_for_fwau(fwau) {
+        if let Some(rec) = self.world.get(e) {
+          let pos = rec.transform.position;
+          let target = if pos.x > bounds.max_x - bounds.overlap_m / 2.0 && bounds.id == 0 {
+            1
+          } else if pos.x < bounds.min_x + bounds.overlap_m / 2.0 && bounds.id == 1 {
+            0
+          } else {
+            bounds.id
+          };
+          if target != bounds.id {
+            self.pending_shard_handoffs.push((fwau, target));
+          }
+        }
+      }
+    }
   }
 
   fn update_sleep_states(&mut self) {
@@ -443,7 +496,7 @@ impl Frame {
     None
   }
 
-  fn fwau_from_intent(&self, fwau: FwauId) -> Option<IuocId> {
+  pub fn iuoc_for_fwau(&self, fwau: FwauId) -> Option<IuocId> {
     self
       .find_avatar_for_fwau(fwau)
       .and_then(|e| self.world.get(e))
@@ -492,6 +545,8 @@ impl Frame {
           reason: format!("{:?}", r),
         })
         .collect(),
+      island_profiler: Some(self.island_mgr.profiler.clone()),
+      shard_id: self.shard_bounds.as_ref().map(|s| s.id),
     }
   }
 
@@ -525,7 +580,13 @@ impl Frame {
   }
 
   pub fn observe_island(&mut self, island: IslandId) -> Option<ObservationResult> {
-    self.islands.get_mut(&island).map(|s| s.observe())
+    self.island_mgr.queue_observe(island);
+    self
+      .island_mgr
+      .collapse_observations()
+      .into_iter()
+      .find(|(id, _)| *id == island)
+      .map(|(_, r)| r)
   }
 
   pub fn psi_future_self(&self, fwau: FwauId) -> Vec<(String, f32)> {
@@ -533,25 +594,11 @@ impl Frame {
     if entity.is_none() {
       return vec![];
     }
-    let island_id = IslandId(entity.unwrap().index as u64 + 1);
-    if let Some(surface) = self.islands.get(&island_id) {
-      let total: f32 = surface.beam.iter().map(|b| b.weight).sum();
-      surface
-        .beam
-        .iter()
-        .take(3)
-        .map(|b| {
-          let p = if total > 0.0 {
-            b.weight / total
-          } else {
-            0.0
-          };
-          (format!("branch:{:?}", b.path), p)
-        })
-        .collect()
-    } else {
-      vec![]
-    }
+    let island_id = self
+      .island_mgr
+      .island_for_entity(entity.unwrap())
+      .unwrap_or(IslandId(1));
+    self.island_mgr.surface_odds(island_id)
   }
 
   pub fn drain_elapsed(&mut self, elapsed: Duration) -> u32 {

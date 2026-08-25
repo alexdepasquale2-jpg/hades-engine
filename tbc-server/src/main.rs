@@ -1,20 +1,22 @@
 use axum::{
   extract::{
     ws::{Message, WebSocket, WebSocketUpgrade},
+    Query,
     State,
   },
   response::{Html, IntoResponse},
   routing::get,
   Json, Router,
 };
+use tbc_engine::aum::AumCore;
+use tbc_engine::frame::FrameSnapshot;
+use tbc_engine::planner::ReincarnationOffer;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
-use tbc_engine::aum::AumCore;
-use tbc_engine::frame::FrameSnapshot;
 use tbc_engine::intent::{Intent, Verb};
 use tbc_engine::types::{FwauId, IuocId, Tick, Vec3};
 use tokio::sync::Mutex;
@@ -42,6 +44,7 @@ struct StatusResponse {
   fwau_count: usize,
   ruleset: String,
   frames: Vec<FrameInfo>,
+  island_profiler: Option<tbc_engine::islands::IslandProfiler>,
 }
 
 #[derive(Serialize)]
@@ -125,8 +128,9 @@ async fn main() {
 
   {
     let mut guard = state.aum.lock().await;
-    guard.frames[0].spawn_demo_world(50);
-    guard.frames[1].spawn_demo_world(12);
+    guard.frames[0].spawn_demo_world(40);
+    guard.frames[1].spawn_demo_world(40);
+    guard.frames[2].spawn_demo_world(8);
   }
 
   let app = Router::new()
@@ -137,6 +141,9 @@ async fn main() {
     .route("/api/blink", axum::routing::post(blink))
     .route("/api/handoff", axum::routing::post(handoff))
     .route("/api/psi", axum::routing::post(psi_query))
+    .route("/api/offers", get(offers))
+    .route("/api/unbind", axum::routing::post(unbind))
+    .route("/api/reincarnate", axum::routing::post(reincarnate))
     .route("/ws", get(ws_handler))
     .nest_service("/static", ServeDir::new("web"))
     .layer(CorsLayer::permissive())
@@ -178,14 +185,14 @@ async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
     fwau_count: frame.fwau_count,
     ruleset: guard.frames[0].spec.ruleset.id.clone(),
     frames,
+    island_profiler: frame.island_profiler.clone(),
   })
 }
 
 async fn login(State(state): State<Arc<AppState>>) -> Json<LoginResponse> {
   let mut guard = state.aum.lock().await;
   let iuoc = guard.iuoc.create_soul();
-  let angle = (guard.frames[0].clock.tick.0 as f32 * 0.1).sin();
-  let pos = Vec3::new(angle * 20.0, angle * 15.0, 0.0);
+  let pos = Vec3::new(-80.0, 0.0, 0.0);
 
   let fwau = guard.bind_player(0, iuoc, pos).unwrap();
   let frame_name = guard.frames[0].spec.ruleset.id.clone();
@@ -263,7 +270,7 @@ async fn blink(
     .await
     .get(&fwau)
     .map(|s| s.frame_idx)
-    .unwrap_or(1);
+    .unwrap_or(2);
   let frame = &mut guard.frames[frame_idx];
   let tick = frame.now();
   let mut payload = Vec::with_capacity(8);
@@ -354,6 +361,105 @@ async fn psi_query(
     .collect();
 
   Json(PsiResponse { odds, recall })
+}
+
+async fn offers(State(state): State<Arc<AppState>>, Query(q): Query<OffersQuery>) -> Json<Vec<ReincarnationOffer>> {
+  let guard = state.aum.lock().await;
+  let iuoc = if let Some(fw) = q.fwau {
+    state
+      .sessions
+      .lock()
+      .await
+      .get(&FwauId(fw))
+      .map(|s| s.iuoc)
+      .unwrap_or(IuocId(q.iuoc.unwrap_or(0)))
+  } else {
+    IuocId(q.iuoc.unwrap_or(0))
+  };
+  Json(guard.reincarnation_offers(iuoc))
+}
+
+#[derive(Deserialize)]
+struct OffersQuery {
+  fwau: Option<u128>,
+  iuoc: Option<u128>,
+}
+
+#[derive(Deserialize)]
+struct UnbindRequest {
+  fwau: u128,
+}
+
+async fn unbind(
+  State(state): State<Arc<AppState>>,
+  Json(req): Json<UnbindRequest>,
+) -> Json<serde_json::Value> {
+  let fwau = FwauId(req.fwau);
+  let frame_idx = state
+    .sessions
+    .lock()
+    .await
+    .get(&fwau)
+    .map(|s| s.frame_idx)
+    .unwrap_or(0);
+  let mut guard = state.aum.lock().await;
+  let packet = guard.unbind_death(fwau, frame_idx);
+  state.sessions.lock().await.remove(&fwau);
+  let offers = guard.reincarnation_offers(
+    packet.as_ref().map(|p| p.iuoc).unwrap_or(IuocId(0)),
+  );
+  Json(serde_json::json!({
+    "packet": packet,
+    "offers": offers,
+    "message": "Something settled. Between-lives offers await."
+  }))
+}
+
+#[derive(Deserialize)]
+struct ReincarnateRequest {
+  iuoc: u128,
+  template_id: String,
+}
+
+async fn reincarnate(
+  State(state): State<Arc<AppState>>,
+  Json(req): Json<ReincarnateRequest>,
+) -> Json<LoginResponse> {
+  let iuoc = IuocId(req.iuoc);
+  let mut guard = state.aum.lock().await;
+  let result = guard.accept_reincarnation(iuoc, &req.template_id);
+  match result {
+    Ok((fwau, frame_idx)) => {
+      let frame_name = guard.frames[frame_idx].spec.ruleset.id.clone();
+      state.sessions.lock().await.insert(
+        fwau,
+        SessionInfo {
+          iuoc,
+          fwau,
+          frame_idx,
+        },
+      );
+      let band = guard
+        .iuoc
+        .get(iuoc)
+        .map(|s| s.quality.band().label().to_string())
+        .unwrap_or_else(|| "Settled".to_string());
+      Json(LoginResponse {
+        iuoc: iuoc.0,
+        fwau: fwau.0,
+        quality_band: band,
+        frame: frame_name,
+        message: format!("Reincarnated into {}.", req.template_id),
+      })
+    }
+    Err(e) => Json(LoginResponse {
+      iuoc: iuoc.0,
+      fwau: 0,
+      quality_band: "—".to_string(),
+      frame: "—".to_string(),
+      message: e,
+    }),
+  }
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {
@@ -450,7 +556,25 @@ async fn sim_loop(state: Arc<AppState>) {
         guard.run_frame_ticks(i, steps);
       }
     }
+    let handoffs = guard.process_shard_handoffs();
     drop(guard);
+
+    if !handoffs.is_empty() {
+      let mut sessions = state.sessions.lock().await;
+      for (old_fwau, new_fwau, to_idx) in handoffs {
+        if let Some(info) = sessions.remove(&old_fwau) {
+          sessions.insert(
+            new_fwau,
+            SessionInfo {
+              iuoc: info.iuoc,
+              fwau: new_fwau,
+              frame_idx: to_idx,
+            },
+          );
+        }
+      }
+    }
+
     tokio::time::sleep(Duration::from_millis(50)).await;
   }
 }
