@@ -1,0 +1,17 @@
+[package]
+name = "tbc-engine"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "The Big Computer — MBT-Native MMORPG Engine core"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+rand.workspace = true
+rand_pcg.workspace = true
+blake3.workspace = true
+ulid.workspace = true
+
+[dev-dependencies]

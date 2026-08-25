@@ -1,0 +1,19 @@
+{
+  "id": "pmr.v1",
+  "title": "PMR-Prime",
+  "tightness": 0.92,
+  "dt_ms": 50,
+  "clock": { "parent": null, "n": 1, "k": 1 },
+  "motion": {
+    "gravity": 9.8,
+    "max_speed": 7.0,
+    "air_control": 0.35,
+    "blink": false,
+    "c_info_m_s": 300
+  },
+  "conservation": { "items": "unique", "currency": "shard-local" },
+  "death": { "unbind": true, "park_s": 0, "rewind_s": 0 },
+  "psi": { "enabled": true, "base_cost": 0.04, "scopes": ["PastOwn", "FutureSelf"] },
+  "sleep": { "delay_s": 2.0, "kinematic_wake": true },
+  "handoff": { "allowed_targets": ["npmr.academy.v1"] }
+}

@@ -1,0 +1,17 @@
+{
+  "id": "npmr.academy.v1",
+  "title": "NPMR-Academy",
+  "tightness": 0.35,
+  "dt_ms": 200,
+  "motion": { "gravity": 0.0, "blink": true, "c_info_m_s": null, "max_speed": 15.0, "air_control": 1.0 },
+  "conservation": { "items": "clone-tax", "clone_tax_entropy": 0.002 },
+  "death": { "unbind": false, "rewind_s": 5, "park_s": 0 },
+  "psi": {
+    "enabled": true,
+    "base_cost": 0.005,
+    "scopes": ["PastOwn", "PastShared", "FutureIsland", "RwwQuery"]
+  },
+  "crdt": { "props": "or-set", "presence": "lww-register" },
+  "sleep": { "delay_s": 1.0, "kinematic_wake": true },
+  "handoff": { "allowed_targets": ["pmr.v1", "npmr.dream.v1"] }
+}

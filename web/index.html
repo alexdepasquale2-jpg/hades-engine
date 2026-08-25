@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>The Big Computer — Debug Client</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1>The Big Computer</h1>
+      <p class="subtitle">TBC Engine · PMR-Prime · Render-on-observation</p>
+    </header>
+
+    <aside class="panel">
+      <section>
+        <h2>Session</h2>
+        <button id="btn-login" class="primary">Partition FWAU</button>
+        <div id="session-info" class="muted">No IUOC bound</div>
+      </section>
+
+      <section>
+        <h2>Entropy Ledger</h2>
+        <div id="band-display" class="band settled">Settled</div>
+        <p class="hint">Private band only. Something settled.</p>
+      </section>
+
+      <section>
+        <h2>Simulation</h2>
+        <div class="stat"><span>Tick</span><strong id="tick">0</strong></div>
+        <div class="stat"><span>Entities</span><strong id="entity-count">0</strong></div>
+        <div class="stat"><span>AI Guys</span><strong id="ai-count">0</strong></div>
+        <div class="stat"><span>Δt</span><strong id="dt">50 ms</strong></div>
+      </section>
+
+      <section>
+        <h2>Psi — FutureSelf</h2>
+        <button id="btn-psi">Query probable futures</button>
+        <ul id="psi-odds" class="odds-list"></ul>
+      </section>
+
+      <section>
+        <h2>Controls</h2>
+        <p class="hint">WASD or arrow keys to move. Space to query psi.</p>
+      </section>
+    </aside>
+
+    <main>
+      <canvas id="world" width="900" height="600"></canvas>
+      <div class="legend">
+        <span class="dot player"></span> FWAU avatar
+        <span class="dot ai awake"></span> AI Guy (awake)
+        <span class="dot ai asleep"></span> AI Guy (sleeping)
+      </div>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
