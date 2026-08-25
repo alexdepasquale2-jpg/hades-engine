@@ -74,6 +74,7 @@ struct LoginResponse {
 
 #[derive(Deserialize)]
 struct MoveRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     dx: f32,
     dy: f32,
@@ -82,6 +83,7 @@ struct MoveRequest {
 
 #[derive(Deserialize)]
 struct BlinkRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     x: f32,
     y: f32,
@@ -89,25 +91,30 @@ struct BlinkRequest {
 
 #[derive(Deserialize)]
 struct HandoffRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     to_frame: String,
 }
 
 #[derive(Deserialize)]
 struct PsiRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     scope: Option<String>,
 }
 
 #[derive(Deserialize)]
 struct SpeakRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     text: String,
 }
 
 #[derive(Deserialize)]
 struct ConsentRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
+    #[serde(with = "tbc_engine::wire_json::compat")]
     helper_iuoc: u128,
     scope: String,
     ttl_ticks: Option<u64>,
@@ -341,17 +348,20 @@ async fn login(State(state): State<Arc<AppState>>) -> Json<LoginResponse> {
 
 #[derive(Deserialize)]
 struct AttackRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     target_entity: Option<u32>,
 }
 
 #[derive(Deserialize)]
 struct InteractRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
 }
 
 #[derive(Deserialize)]
 struct AssistRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     target_entity: Option<u32>,
 }
@@ -688,6 +698,7 @@ struct OffersQuery {
 
 #[derive(Deserialize)]
 struct UnbindRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
 }
 
@@ -716,6 +727,7 @@ async fn unbind(
 
 #[derive(Deserialize)]
 struct ReincarnateRequest {
+    #[serde(with = "tbc_engine::wire_json::compat")]
     iuoc: u128,
     template_id: String,
 }

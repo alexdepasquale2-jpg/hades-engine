@@ -316,14 +316,7 @@ async fn handle_reliable(
                 let mut guard = state.aum.lock().await;
                 let result = guard.attack(frame_idx, FwauId(fwau), target);
                 drop(guard);
-                if let Ok(bytes) = encode_reliable(&WireMessage {
-                    kind: "attack_result".into(),
-                    tick: None,
-                    fwau: Some(fwau.to_string()),
-                    payload: serde_json::to_value(&result).unwrap_or_default(),
-                }) {
-                    let _ = send.write_all(&bytes).await;
-                }
+                send_wire_result(send, "attack_result", fwau, &result).await;
                 push_snapshot(state, FwauId(fwau), send).await;
             }
         }
@@ -339,19 +332,176 @@ async fn handle_reliable(
                 let mut guard = state.aum.lock().await;
                 let result = guard.interact(frame_idx, FwauId(fwau));
                 drop(guard);
-                if let Ok(bytes) = encode_reliable(&WireMessage {
-                    kind: "interact_result".into(),
-                    tick: None,
-                    fwau: Some(fwau.to_string()),
-                    payload: serde_json::to_value(&result).unwrap_or_default(),
-                }) {
-                    let _ = send.write_all(&bytes).await;
-                }
+                send_wire_result(send, "interact_result", fwau, &result).await;
                 push_snapshot(state, FwauId(fwau), send).await;
+            }
+        }
+        "assist" => {
+            if let Some(fwau) = msg.fwau_u128() {
+                let frame_idx = session_frame_idx(state, fwau).await;
+                let target = msg
+                    .payload
+                    .get("target_entity")
+                    .and_then(|v| v.as_u64())
+                    .map(|idx| tbc_engine::types::Entity {
+                        index: idx as u32,
+                        generation: 0,
+                    });
+                let mut guard = state.aum.lock().await;
+                let result = guard.assist(frame_idx, FwauId(fwau), target);
+                drop(guard);
+                send_wire_result(send, "assist_result", fwau, &result).await;
+                push_snapshot(state, FwauId(fwau), send).await;
+            }
+        }
+        "speak" => {
+            if let Some(fwau) = msg.fwau_u128() {
+                let frame_idx = session_frame_idx(state, fwau).await;
+                let text = msg
+                    .payload
+                    .get("text")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let mut guard = state.aum.lock().await;
+                let result = guard.speak(frame_idx, FwauId(fwau), text);
+                drop(guard);
+                send_wire_result(send, "speak_result", fwau, &result).await;
+            }
+        }
+        "psi" => {
+            if let Some(fwau) = msg.fwau_u128() {
+                let frame_idx = session_frame_idx(state, fwau).await;
+                let scope = msg
+                    .payload
+                    .get("scope")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("FutureSelf");
+                let session = state.sessions.lock().await.get(&FwauId(fwau)).cloned();
+                let iuoc = session
+                    .map(|s| s.iuoc)
+                    .unwrap_or(tbc_engine::types::IuocId(0));
+                let mut guard = state.aum.lock().await;
+                let result = guard.query_psi(frame_idx, FwauId(fwau), iuoc, scope);
+                drop(guard);
+                send_wire_result(send, "psi_result", fwau, &result).await;
+            }
+        }
+        "blink" => {
+            if let Some(fwau) = msg.fwau_u128() {
+                let payload = msg.payload.as_object();
+                let x = payload
+                    .and_then(|p| p.get("x"))
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as f32;
+                let y = payload
+                    .and_then(|p| p.get("y"))
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(0.0) as f32;
+                submit_blink(state, FwauId(fwau), x, y).await;
+                push_snapshot(state, FwauId(fwau), send).await;
+            }
+        }
+        "handoff" => {
+            if let Some(fwau) = msg.fwau_u128() {
+                let to_frame = msg
+                    .payload
+                    .get("to_frame")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("");
+                let mut guard = state.aum.lock().await;
+                let old = FwauId(fwau);
+                let session = state.sessions.lock().await.get(&old).cloned();
+                let from_idx = session.as_ref().map(|s| s.frame_idx).unwrap_or(0);
+                let to_idx = guard
+                    .frames
+                    .iter()
+                    .position(|f| f.spec.ruleset.id == to_frame);
+                if let Some(to_idx) = to_idx {
+                    if guard.handoff_fwau(old, from_idx, to_idx).is_ok() {
+                        let iuoc = session
+                            .map(|s| s.iuoc)
+                            .unwrap_or(tbc_engine::types::IuocId(0));
+                        let new_fwau = guard
+                            .iuoc
+                            .get(iuoc)
+                            .and_then(|s| s.bound_fwau)
+                            .unwrap_or(old);
+                        state.sessions.lock().await.insert(
+                            new_fwau,
+                            SessionInfo {
+                                iuoc,
+                                fwau: new_fwau,
+                                frame_idx: to_idx,
+                            },
+                        );
+                        state.sessions.lock().await.remove(&old);
+                        let reply = serde_json::json!({
+                            "iuoc": iuoc.0,
+                            "fwau": new_fwau.0,
+                            "frame": to_frame,
+                        });
+                        send_wire_result(send, "handoff_ok", new_fwau.0, &reply).await;
+                        push_snapshot(state, new_fwau, send).await;
+                    }
+                }
             }
         }
         _ => warn!("unknown wire kind: {}", msg.kind),
     }
+}
+
+async fn session_frame_idx(state: &Arc<GatewayState>, fwau: u128) -> usize {
+    state
+        .sessions
+        .lock()
+        .await
+        .get(&FwauId(fwau))
+        .map(|s| s.frame_idx)
+        .unwrap_or(0)
+}
+
+async fn send_wire_result<T: serde::Serialize>(
+    send: &mut quinn::SendStream,
+    kind: &str,
+    fwau: u128,
+    payload: &T,
+) {
+    if let Ok(bytes) = encode_reliable(&WireMessage::result(
+        kind,
+        fwau,
+        serde_json::to_value(payload).unwrap_or_default(),
+    )) {
+        let _ = send.write_all(&bytes).await;
+    }
+}
+
+async fn submit_blink(state: &Arc<GatewayState>, fwau: FwauId, x: f32, y: f32) {
+    let frame_idx = state
+        .sessions
+        .lock()
+        .await
+        .get(&fwau)
+        .map(|s| s.frame_idx)
+        .unwrap_or(0);
+    let mut guard = state.aum.lock().await;
+    if frame_idx >= guard.frames.len() {
+        return;
+    }
+    let frame = &mut guard.frames[frame_idx];
+    let tick = frame.now();
+    let mut payload = Vec::with_capacity(8);
+    payload.extend_from_slice(&x.to_le_bytes());
+    payload.extend_from_slice(&y.to_le_bytes());
+    let intent = Intent {
+        fwau,
+        tick,
+        seq: tick.0 as u32,
+        verb: Verb::Blink,
+        payload,
+        consent: None,
+        checksum: 0,
+    };
+    frame.submit_intent(intent).ok();
 }
 
 fn spawn_pos_for_node(node: &ShardNodeConfig) -> Vec3 {

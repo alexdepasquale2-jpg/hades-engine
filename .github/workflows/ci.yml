@@ -29,5 +29,8 @@ jobs:
       - name: Test tbc-engine
         run: cargo test -p tbc-engine
 
+      - name: Test tbc-sdk
+        run: cargo test -p tbc-sdk
+
       - name: Clippy (engine, warnings allowed)
         run: cargo clippy -p tbc-engine --all-targets

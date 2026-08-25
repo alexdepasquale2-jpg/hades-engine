@@ -32,6 +32,100 @@ impl WireMessage {
         }
     }
 
+    pub fn blink(fwau: u128, x: f32, y: f32) -> Self {
+        Self {
+            kind: "blink".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: serde_json::json!({ "x": x, "y": y }),
+        }
+    }
+
+    pub fn handoff(fwau: u128, to_frame: &str) -> Self {
+        Self {
+            kind: "handoff".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: serde_json::json!({ "to_frame": to_frame }),
+        }
+    }
+
+    pub fn attack(fwau: u128, target_entity: Option<u32>) -> Self {
+        Self {
+            kind: "attack".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: serde_json::json!({ "target_entity": target_entity }),
+        }
+    }
+
+    pub fn interact(fwau: u128) -> Self {
+        Self {
+            kind: "interact".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: Value::Null,
+        }
+    }
+
+    pub fn assist(fwau: u128, target_entity: Option<u32>) -> Self {
+        Self {
+            kind: "assist".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: serde_json::json!({ "target_entity": target_entity }),
+        }
+    }
+
+    pub fn speak(fwau: u128, text: &str) -> Self {
+        Self {
+            kind: "speak".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: serde_json::json!({ "text": text }),
+        }
+    }
+
+    pub fn psi_query(fwau: u128, scope: &str) -> Self {
+        Self {
+            kind: "psi".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: serde_json::json!({ "scope": scope }),
+        }
+    }
+
+    pub fn consent_grant(fwau: u128, helper_iuoc: u128, scope: &str, ttl_ticks: u64) -> Self {
+        Self {
+            kind: "consent".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: serde_json::json!({
+                "helper_iuoc": helper_iuoc.to_string(),
+                "scope": scope,
+                "ttl_ticks": ttl_ticks,
+            }),
+        }
+    }
+
+    pub fn snapshot_request(fwau: u128) -> Self {
+        Self {
+            kind: "snapshot".into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload: Value::Null,
+        }
+    }
+
+    pub fn result(kind: &str, fwau: u128, payload: Value) -> Self {
+        Self {
+            kind: kind.into(),
+            tick: None,
+            fwau: Some(fwau.to_string()),
+            payload,
+        }
+    }
+
     pub fn snapshot(payload: Value) -> Self {
         Self {
             kind: "snapshot".into(),

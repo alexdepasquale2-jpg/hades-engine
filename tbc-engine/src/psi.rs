@@ -3,7 +3,7 @@
 use crate::aum::AumCore;
 use crate::types::{FwauId, IuocId};
 
-#[derive(Clone, Debug, serde::Serialize)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct PsiResponse {
     pub scope: String,
     pub allowed: bool,

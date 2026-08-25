@@ -1,4 +1,5 @@
 const SCALE = 3;
+const client = new TbcClient();
 const ORIGIN_X = 450;
 const ORIGIN_Y = 300;
 const SHARD_SEAM_X = 0;
@@ -107,8 +108,7 @@ function updateMoveVec() {
 }
 
 async function login() {
-  const res = await fetch("/api/login");
-  const data = await res.json();
+  const data = await client.login();
   session = { iuoc: data.iuoc, fwau: data.fwau, band: data.quality_band, frame: data.frame };
   localStorage.setItem("tbc_iuoc", String(data.iuoc));
   showResumeButton();
@@ -136,8 +136,7 @@ function showResumeButton() {
 async function resumeSoul() {
   const iuoc = localStorage.getItem("tbc_iuoc");
   if (!iuoc) return;
-  const res = await fetch(`/api/resume?iuoc=${iuoc}`);
-  const data = await res.json();
+  const data = await client.resume(iuoc);
   if (!data.fwau) {
     flash("reject-flash", data.message);
     return;
@@ -245,12 +244,7 @@ async function speak() {
 
 async function assistNearest() {
   if (!session.fwau) return;
-  const res = await fetch("/api/assist", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fwau: session.fwau }),
-  });
-  const data = await res.json();
+  const data = await client.assist(session.fwau);
   if (data.hit) {
     flash("correction-flash", data.message);
     document.getElementById("player-stamina").textContent = Math.round(data.player_stamina);
@@ -518,8 +512,7 @@ function onSnapshot(snap) {
 
 async function pollStatus() {
   try {
-    const res = await fetch("/api/status");
-    const data = await res.json();
+    const data = await client.status();
     document.getElementById("dt").textContent = `${data.dt_ms} ms`;
     if (!session.fwau) {
       document.getElementById("tick").textContent = data.tick;

@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M16 vertical slice** of the spec:
+**M1–M17 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -27,7 +27,8 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `assist` | M16 | Consent-gated heal + NPMR AI practice mode |
 | `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
-| Debug server | §10 | HTTP + WebSocket — cluster **6014**, shard-00 **6020**, shard-01 **6021** |
+| Debug server | §10 | HTTP + WebSocket — cluster **6014** |
+| `tbc-sdk` | M17 | Typed HTTP client + wire protocol re-exports |
 | QUIC gateway | §10 M12 | TLS/mTLS QUIC **4433**, ops HTTP **9443** |
 
 ## Quick start
@@ -183,6 +184,20 @@ Transport
 | M14 NPMR Dream + CRDT props + handoff policy | Done |
 | M15 Psi scopes + Speak + Consent | Done |
 | M16 Consent-gated assist + CI | Done |
+| M17 Typed client SDK (`tbc-sdk`) | Done |
+
+## Client SDK (M17)
+
+Rust crate `tbc-sdk` wraps the debug HTTP API and re-exports QUIC wire types:
+
+```bash
+cargo run -p tbc-sdk --example http_demo
+# TBC_URL=http://127.0.0.1:6014 cargo run -p tbc-sdk --example http_demo
+```
+
+Browser: `web/sdk/tbc-client.js` — `TbcClient` class used by the debug UI.
+
+Wire message builders (`assist`, `speak`, `psi`, `handoff`, …) live in `tbc_engine::transport` for QUIC gateway clients.
 
 ## Rulesets
 

@@ -27,6 +27,7 @@ pub mod shard;
 pub mod social;
 pub mod transport;
 pub mod types;
+pub mod wire_json;
 
 pub mod aum {
     use crate::frame::{Frame, FrameSpec};
