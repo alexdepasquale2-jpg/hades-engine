@@ -528,8 +528,7 @@ async fn submit_blink(state: &Arc<GatewayState>, fwau: FwauId, x: f32, y: f32) {
     if frame_idx >= guard.frames.len() {
         return;
     }
-    let frame = &mut guard.frames[frame_idx];
-    let tick = frame.now();
+    let tick = guard.frames[frame_idx].now();
     let mut payload = Vec::with_capacity(8);
     payload.extend_from_slice(&x.to_le_bytes());
     payload.extend_from_slice(&y.to_le_bytes());
@@ -542,7 +541,7 @@ async fn submit_blink(state: &Arc<GatewayState>, fwau: FwauId, x: f32, y: f32) {
         consent: None,
         checksum: 0,
     };
-    frame.submit_intent(intent).ok();
+    guard.submit_intent(frame_idx, intent).ok();
 }
 
 fn spawn_pos_for_node(node: &ShardNodeConfig) -> Vec3 {
@@ -588,7 +587,6 @@ async fn submit_move(state: &Arc<GatewayState>, fwau: FwauId, tick: Tick, dx: f3
     if frame_idx >= guard.frames.len() {
         return;
     }
-    let frame = &mut guard.frames[frame_idx];
     let mut payload = Vec::with_capacity(8);
     payload.extend_from_slice(&dx.to_le_bytes());
     payload.extend_from_slice(&dy.to_le_bytes());
@@ -601,5 +599,5 @@ async fn submit_move(state: &Arc<GatewayState>, fwau: FwauId, tick: Tick, dx: f3
         consent: None,
         checksum: 0,
     };
-    frame.submit_intent(intent).ok();
+    guard.submit_intent(frame_idx, intent).ok();
 }

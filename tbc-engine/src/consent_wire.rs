@@ -46,17 +46,7 @@ pub fn verify_consent_stamp(
     stamp: &ConsentStamp,
     now_tick: u64,
 ) -> bool {
-    if stamp.expires_tick < now_tick {
-        return false;
-    }
-    let target = IuocId(stamp.target);
-    let pact = format!("{}:{}:{}", stamp.scope, helper.0, stamp.expires_tick);
-    let pact_ok = aum
-        .iuoc
-        .get(target)
-        .map(|s| s.consent.pacts.iter().any(|p| p == &pact))
-        .unwrap_or(false);
-    pact_ok || aum.has_consent(target, helper, &stamp.scope)
+    aum.iuoc.verify_consent_stamp(helper, stamp, now_tick)
 }
 
 #[cfg(test)]

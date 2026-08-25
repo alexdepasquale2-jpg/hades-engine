@@ -1,3 +1,4 @@
+use crate::assist::AssistResult;
 use crate::beam::ObservationResult;
 use crate::clock::DeltaTClock;
 use crate::ecs::World;
@@ -6,7 +7,8 @@ use crate::guardrails::{GuardrailConfig, GuardrailReport, GuardrailState};
 use crate::intent::{Intent, IntentQueue, Verb};
 use crate::islands::IslandManager;
 use crate::iuoc::{EntityRef, IuocRegistry};
-use crate::ledger::{EntropyLedger, ResolvedAction};
+use crate::ledger::EntropyLedger;
+use crate::social::{SpeakResult, SpeakEvent};
 use crate::netcode::{Correction, EntityPose, IntentReject, NetcodeState};
 use crate::ruleset::Ruleset;
 use crate::shard::ShardBounds;
@@ -100,6 +102,15 @@ pub struct BandChange {
     pub message: String,
 }
 
+/// Deferred RWW publish drained by AUM after each tick.
+#[derive(Clone, Debug)]
+pub struct RwwOutbox {
+    pub topic: String,
+    pub body: Vec<u8>,
+    pub tick: u64,
+    pub persistent: bool,
+}
+
 /// TBC frame — authoritative simulation shard.
 pub struct Frame {
     pub spec: FrameSpec,
@@ -115,7 +126,10 @@ pub struct Frame {
     pub rng_seed: u64,
     pub guardrails: GuardrailState,
     pub prop_store: crate::crdt_props::PropStore,
-    pub recent_speaks: Vec<crate::social::SpeakEvent>,
+    pub recent_speaks: Vec<SpeakEvent>,
+    pub pending_rww: Vec<RwwOutbox>,
+    pub last_assist: HashMap<FwauId, AssistResult>,
+    pub last_speak: HashMap<FwauId, SpeakResult>,
     sleep_delay_ticks: u64,
     player_last_pos: HashMap<FwauId, Vec3>,
     was_awake: HashSet<Entity>,
@@ -146,6 +160,9 @@ impl Frame {
             guardrails: GuardrailState::new(guard_config),
             prop_store: crate::crdt_props::PropStore::new(),
             recent_speaks: Vec::new(),
+            pending_rww: Vec::new(),
+            last_assist: HashMap::new(),
+            last_speak: HashMap::new(),
             sleep_delay_ticks,
             player_last_pos: HashMap::new(),
             was_awake: HashSet::new(),
@@ -205,7 +222,12 @@ impl Frame {
         Ok(fwau_id)
     }
 
-    pub fn submit_intent(&mut self, intent: Intent) -> Result<(), IntentReject> {
+    pub fn submit_intent(
+        &mut self,
+        intent: Intent,
+        iuoc: &IuocRegistry,
+        ledger: &mut EntropyLedger,
+    ) -> Result<(), IntentReject> {
         if !self.intent_queues.contains_key(&intent.fwau) {
             self.netcode
                 .record_reject(intent.fwau, IntentReject::UnknownFwau);
@@ -242,10 +264,33 @@ impl Frame {
 
         if needs_rewind {
             if self.guardrails.allow_rewind() {
-                self.rewind_replay(intent.tick);
+                self.rewind_replay(intent.tick, iuoc, ledger);
             }
         }
         Ok(())
+    }
+
+    /// Apply assist/speak intents for `tick` immediately (HTTP/QUIC synchronous path).
+    pub fn flush_verb_intents(
+        &mut self,
+        tick: Tick,
+        iuoc: &IuocRegistry,
+        ledger: &mut EntropyLedger,
+    ) {
+        let verbs = self.take_pending_verbs_for_tick(tick);
+        self.apply_tick_intents(&verbs, iuoc, ledger);
+    }
+
+    fn take_pending_verbs_for_tick(&mut self, tick: Tick) -> Vec<Intent> {
+        let mut out = Vec::new();
+        for bucket in self.netcode.pending.values_mut() {
+            if let Some(intent) = bucket.get(&tick.0) {
+                if intent.verb == Verb::Assist || intent.verb == Verb::Speak {
+                    out.push(bucket.remove(&tick.0).unwrap());
+                }
+            }
+        }
+        out
     }
 
     pub fn unbind_fwau(&mut self, fwau: FwauId) {
@@ -286,7 +331,7 @@ impl Frame {
         self.netcode.store_snapshot(tick, poses);
     }
 
-    fn rewind_replay(&mut self, from: Tick) {
+    fn rewind_replay(&mut self, from: Tick, iuoc: &IuocRegistry, ledger: &mut EntropyLedger) {
         let snap = self.netcode.snapshot_at(from).cloned().or_else(|| {
             // Fall back to nearest ring slot if exact tick missing
             self.netcode.ring.iter().find_map(|s| s.clone())
@@ -303,7 +348,7 @@ impl Frame {
         for t in from.0..auth {
             let tick = Tick(t);
             let intents = self.netcode.pending_for_tick(tick);
-            self.apply_move_intents(&intents);
+            self.apply_tick_intents(&intents, iuoc, ledger);
             self.integrate_physics(false);
             let poses = self.collect_poses();
             let cs = NetcodeState::checksum(&poses);
@@ -321,7 +366,12 @@ impl Frame {
         });
     }
 
-    fn apply_move_intents(&mut self, intents: &[Intent]) {
+    fn apply_tick_intents(
+        &mut self,
+        intents: &[Intent],
+        iuoc: &IuocRegistry,
+        ledger: &mut EntropyLedger,
+    ) {
         for intent in intents {
             if intent.verb == Verb::Move && intent.payload.len() >= 8 {
                 let dx = f32::from_le_bytes(intent.payload[0..4].try_into().unwrap());
@@ -347,6 +397,27 @@ impl Frame {
                         }
                     }
                 }
+            } else if intent.verb == Verb::Assist {
+                let target = intent
+                    .payload
+                    .get(0..4)
+                    .and_then(|b| b.try_into().ok())
+                    .map(|idx: [u8; 4]| Entity {
+                        index: u32::from_le_bytes(idx),
+                        generation: 0,
+                    });
+                let res = self.try_assist(
+                    intent.fwau,
+                    target,
+                    intent.consent.clone(),
+                    iuoc,
+                    ledger,
+                );
+                self.last_assist.insert(intent.fwau, res);
+            } else if intent.verb == Verb::Speak {
+                let text = String::from_utf8_lossy(&intent.payload).into_owned();
+                let res = self.try_speak(intent.fwau, &text, intent.consent.clone(), iuoc, ledger);
+                self.last_speak.insert(intent.fwau, res);
             }
         }
     }
@@ -409,16 +480,21 @@ impl Frame {
         }
     }
 
-    pub fn run_ticks(&mut self, steps: u32, ledger: &mut EntropyLedger) -> Vec<ReplicationPacket> {
+    pub fn run_ticks(
+        &mut self,
+        steps: u32,
+        ledger: &mut EntropyLedger,
+        iuoc: &IuocRegistry,
+    ) -> Vec<ReplicationPacket> {
         let mut packets = Vec::new();
         for _ in 0..steps {
-            self.step_once(ledger);
+            self.step_once(ledger, iuoc);
             packets.push(self.build_replication());
         }
         packets
     }
 
-    pub fn step_once(&mut self, ledger: &mut EntropyLedger) {
+    pub fn step_once(&mut self, ledger: &mut EntropyLedger, iuoc: &IuocRegistry) {
         let tick = self.now();
         self.guardrails.begin_tick(self.spec.ruleset.dt_ms);
 
@@ -428,7 +504,7 @@ impl Frame {
             all_intents.extend(queue.drain_for_tick(tick));
         }
 
-        self.apply_move_intents(&all_intents);
+        self.apply_tick_intents(&all_intents, iuoc, ledger);
         self.integrate_physics(false);
         self.update_sleep_states();
         self.step_islands_and_observe();

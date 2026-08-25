@@ -24,7 +24,8 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `CrdtProp` / `PropStore` | M14 | Or-set props in NPMR frames from interact |
 | `VerbPolicies` | M13/M15 | Attack/interact/speak from ruleset JSON |
 | `query_psi` / `speak` | M15 | Ruleset-gated psi scopes + social broadcast |
-| `assist` | M16 | Consent-gated heal + NPMR AI practice mode |
+| `assist` | M16/M20 | Consent-gated heal + NPMR AI practice mode (intent queue) |
+| `speak` | M15/M20 | Ruleset-gated social broadcast (intent queue) |
 | `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
 | Debug server | §10 | HTTP + WebSocket — cluster **6014** |
@@ -138,6 +139,7 @@ cargo test -p tbc-engine npmr_dream
 cargo test -p tbc-engine consent_wire
 cargo test -p tbc-engine psi_social
 cargo test -p tbc-engine assist
+cargo test -p tbc-engine intent_verbs
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
@@ -188,6 +190,7 @@ Transport
 | M17 Typed client SDK (`tbc-sdk`) | Done |
 | M18 Consent-stamped wire intents | Done |
 | M19 Release + crates.io publish | Done |
+| M20 Assist/Speak intent queue + rewind | Done |
 
 ## Publishing (M19)
 
@@ -220,7 +223,7 @@ cargo run -p tbc-sdk --example http_demo
 
 Browser: `web/sdk/tbc-client.js` — `TbcClient` class used by the debug UI.
 
-Wire message builders (`assist`, `speak`, `psi`, `handoff`, …) live in `tbc_engine::transport` for QUIC gateway clients. M18 adds optional `consent` stamps on `assist` / `speak` payloads and `wire_to_intent()` for `Verb::Assist` / `Verb::Speak`.
+Wire message builders (`assist`, `speak`, `psi`, `handoff`, …) live in `tbc_engine::transport` for QUIC gateway clients. M18 adds optional `consent` stamps on `assist` / `speak` payloads and `wire_to_intent()` for `Verb::Assist` / `Verb::Speak`. M20 routes those verbs through the netcode intent buffer — `step_once` and rewind-replay apply them alongside Move/Blink.
 
 ## Rulesets
 

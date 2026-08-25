@@ -297,6 +297,41 @@ impl IuocRegistry {
         self.persist_soul(iuoc);
         Ok(())
     }
+
+    /// M15/M20 — check live consent pact on granter soul (`scope:helper:expires`).
+    pub fn has_consent_pact(&self, from: IuocId, helper: IuocId, scope: &str, now_tick: u64) -> bool {
+        self.get(from)
+            .map(|s| {
+                s.consent.pacts.iter().any(|p| {
+                    p.starts_with(&format!("{}:{}", scope, helper.0))
+                        && p.rsplit(':')
+                            .next()
+                            .and_then(|t| t.parse().ok())
+                            .unwrap_or(0)
+                            >= now_tick
+                })
+            })
+            .unwrap_or(false)
+    }
+
+    /// M18/M20 — verify wire consent stamp against granter soul pacts.
+    pub fn verify_consent_stamp(
+        &self,
+        helper: IuocId,
+        stamp: &crate::intent::ConsentStamp,
+        now_tick: u64,
+    ) -> bool {
+        if stamp.expires_tick < now_tick {
+            return false;
+        }
+        let target = IuocId(stamp.target);
+        let pact = format!("{}:{}:{}", stamp.scope, helper.0, stamp.expires_tick);
+        let pact_ok = self
+            .get(target)
+            .map(|s| s.consent.pacts.iter().any(|p| p == &pact))
+            .unwrap_or(false);
+        pact_ok || self.has_consent_pact(target, helper, &stamp.scope, now_tick)
+    }
 }
 
 pub fn psi_budget(quality: QualityScalar) -> f32 {

@@ -561,8 +561,98 @@ pub mod aum {
 
         pub fn run_frame_ticks(&mut self, frame_idx: usize, steps: u32) {
             for _ in 0..steps {
-                self.frames[frame_idx].step_once(&mut self.ledger);
+                self.frames[frame_idx].step_once(&mut self.ledger, &self.iuoc);
+                self.drain_frame_rww(frame_idx);
             }
+        }
+
+        fn drain_frame_rww(&mut self, frame_idx: usize) {
+            for msg in self.frames[frame_idx].pending_rww.drain(..) {
+                self.rww.publish(&msg.topic, &msg.body, msg.tick, msg.persistent);
+            }
+        }
+
+        pub fn submit_intent(
+            &mut self,
+            frame_idx: usize,
+            intent: crate::intent::Intent,
+        ) -> Result<(), crate::netcode::IntentReject> {
+            self.frames[frame_idx].submit_intent(intent, &self.iuoc, &mut self.ledger)
+        }
+
+        /// M20 — queue assist via netcode intent buffer, apply for current tick, return outcome.
+        pub fn assist(
+            &mut self,
+            frame_idx: usize,
+            fwau: FwauId,
+            target: Option<crate::types::Entity>,
+            wire_consent: Option<crate::intent::ConsentStamp>,
+        ) -> crate::assist::AssistResult {
+            use crate::assist::fail_assist;
+            use crate::intent::{Intent, Verb};
+
+            let tick = self.frames[frame_idx].now();
+            let mut payload = Vec::new();
+            if let Some(entity) = target {
+                payload.extend_from_slice(&entity.index.to_le_bytes());
+            }
+            let intent = Intent {
+                fwau,
+                tick,
+                seq: tick.0 as u32,
+                verb: Verb::Assist,
+                payload,
+                consent: wire_consent,
+                checksum: 0,
+            };
+            if self.submit_intent(frame_idx, intent).is_err() {
+                return fail_assist("Intent rejected");
+            }
+            self.frames[frame_idx].flush_verb_intents(tick, &self.iuoc, &mut self.ledger);
+            self.drain_frame_rww(frame_idx);
+            self.frames[frame_idx]
+                .last_assist
+                .remove(&fwau)
+                .unwrap_or_else(|| fail_assist("Assist not applied"))
+        }
+
+        /// M20 — queue speak via netcode intent buffer, apply for current tick, return outcome.
+        pub fn speak(
+            &mut self,
+            frame_idx: usize,
+            fwau: FwauId,
+            text: &str,
+            wire_consent: Option<crate::intent::ConsentStamp>,
+        ) -> crate::social::SpeakResult {
+            use crate::intent::{Intent, Verb};
+
+            let tick = self.frames[frame_idx].now();
+            let intent = Intent {
+                fwau,
+                tick,
+                seq: tick.0 as u32,
+                verb: Verb::Speak,
+                payload: text.as_bytes().to_vec(),
+                consent: wire_consent,
+                checksum: 0,
+            };
+            if self.submit_intent(frame_idx, intent).is_err() {
+                return crate::social::SpeakResult {
+                    heard: false,
+                    listeners: 0,
+                    message: "Intent rejected".into(),
+                };
+            }
+            self.frames[frame_idx].flush_verb_intents(tick, &self.iuoc, &mut self.ledger);
+            self.drain_frame_rww(frame_idx);
+            self.frames[frame_idx]
+                .last_speak
+                .remove(&fwau)
+                .unwrap_or_else(|| crate::social::SpeakResult {
+                    heard: false,
+                    listeners: 0,
+                    message: "Speak not applied".into(),
+                })
         }
 
         pub fn run_all_frames(&mut self, steps: u32) {

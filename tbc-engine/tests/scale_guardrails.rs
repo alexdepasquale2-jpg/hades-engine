@@ -34,9 +34,10 @@ fn pmr_200_entities_stays_within_budget() {
         }
     }
 
+    let mut registry = IuocRegistry::new();
     let mut within_ticks = 0;
     for _ in 0..600 {
-        frame.step_once(&mut ledger);
+        frame.step_once(&mut ledger, &registry);
         if frame.island_mgr.profiler.within_budget {
             within_ticks += 1;
         }
@@ -50,6 +51,7 @@ fn pmr_200_entities_stays_within_budget() {
 #[test]
 fn intent_flood_rate_limited() {
     let mut frame = test_frame();
+    let mut ledger = EntropyLedger::new();
     let mut registry = IuocRegistry::new();
     let iuoc = registry.create_soul();
     let fwau = frame
@@ -70,7 +72,7 @@ fn intent_flood_rate_limited() {
             consent: None,
             checksum: 0,
         };
-        match frame.submit_intent(intent) {
+        match frame.submit_intent(intent, &registry, &mut ledger) {
             Ok(()) => accepted += 1,
             Err(IntentReject::RateLimited) | Err(IntentReject::QueueFull) => rejected += 1,
             Err(e) => panic!("unexpected reject: {:?}", e),
@@ -84,6 +86,8 @@ fn intent_flood_rate_limited() {
 #[test]
 fn unknown_fwau_rejected() {
     let mut frame = test_frame();
+    let mut ledger = EntropyLedger::new();
+    let registry = IuocRegistry::new();
     let intent = Intent {
         fwau: FwauId(999),
         tick: Tick(1),
@@ -93,6 +97,6 @@ fn unknown_fwau_rejected() {
         consent: None,
         checksum: 0,
     };
-    let err = frame.submit_intent(intent).unwrap_err();
+    let err = frame.submit_intent(intent, &registry, &mut ledger).unwrap_err();
     assert_eq!(err, IntentReject::UnknownFwau);
 }

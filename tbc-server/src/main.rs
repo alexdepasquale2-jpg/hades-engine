@@ -496,7 +496,14 @@ async fn resume(
     }
 }
 
-fn submit_move(frame: &mut tbc_engine::frame::Frame, fwau: FwauId, dx: f32, dy: f32, tick: Tick) {
+fn submit_move(
+    guard: &mut tbc_engine::aum::AumCore,
+    frame_idx: usize,
+    fwau: FwauId,
+    dx: f32,
+    dy: f32,
+    tick: Tick,
+) {
     let mut payload = Vec::with_capacity(8);
     payload.extend_from_slice(&dx.to_le_bytes());
     payload.extend_from_slice(&dy.to_le_bytes());
@@ -509,7 +516,7 @@ fn submit_move(frame: &mut tbc_engine::frame::Frame, fwau: FwauId, dx: f32, dy: 
         consent: None,
         checksum: 0,
     };
-    if let Err(e) = frame.submit_intent(intent) {
+    if let Err(e) = guard.submit_intent(frame_idx, intent) {
         info!("intent rejected: {:?}", e);
     }
 }
@@ -527,10 +534,12 @@ async fn move_player(
         .get(&fwau)
         .map(|s| s.frame_idx)
         .unwrap_or(0);
-    let frame = &mut guard.frames[frame_idx];
-    let tick = Tick(req.tick.unwrap_or_else(|| frame.now().0));
-    submit_move(frame, fwau, req.dx, req.dy, tick);
-    Json(frame.build_snapshot())
+    let tick = {
+        let frame = &guard.frames[frame_idx];
+        Tick(req.tick.unwrap_or_else(|| frame.now().0))
+    };
+    submit_move(&mut guard, frame_idx, fwau, req.dx, req.dy, tick);
+    Json(guard.frames[frame_idx].build_snapshot())
 }
 
 async fn blink(
@@ -546,8 +555,7 @@ async fn blink(
         .get(&fwau)
         .map(|s| s.frame_idx)
         .unwrap_or(2);
-    let frame = &mut guard.frames[frame_idx];
-    let tick = frame.now();
+    let tick = guard.frames[frame_idx].now();
     let mut payload = Vec::with_capacity(8);
     payload.extend_from_slice(&req.x.to_le_bytes());
     payload.extend_from_slice(&req.y.to_le_bytes());
@@ -560,8 +568,8 @@ async fn blink(
         consent: None,
         checksum: 0,
     };
-    frame.submit_intent(intent).ok();
-    Json(frame.build_snapshot())
+    guard.submit_intent(frame_idx, intent).ok();
+    Json(guard.frames[frame_idx].build_snapshot())
 }
 
 async fn handoff(
@@ -876,7 +884,7 @@ async fn handle_socket(socket: WebSocket, state: Arc<AppState>) {
                                     .tick
                                     .unwrap_or_else(|| guard.frames[frame_idx].now().0),
                             );
-                            submit_move(&mut guard.frames[frame_idx], fwau_id, dx, dy, tick);
+                            submit_move(&mut guard, frame_idx, fwau_id, dx, dy, tick);
                         }
                     }
                 }

@@ -1,9 +1,10 @@
-//! M15 — Speak broadcasts and Consent pacts (spec §3 assist).
+//! M15/M20 — Speak broadcasts and Consent pacts (spec §3 assist).
 
 use crate::aum::AumCore;
-use crate::consent_wire::verify_consent_stamp;
+use crate::frame::{Frame, RwwOutbox};
 use crate::intent::ConsentStamp;
-use crate::ledger::ResolvedAction;
+use crate::iuoc::IuocRegistry;
+use crate::ledger::{EntropyLedger, ResolvedAction};
 use crate::types::{FwauId, IuocId, Tick, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -21,17 +22,18 @@ pub struct SpeakResult {
     pub message: String,
 }
 
-impl AumCore {
-    pub fn speak(
+impl Frame {
+    pub fn try_speak(
         &mut self,
-        frame_idx: usize,
         fwau: FwauId,
         text: &str,
         wire_consent: Option<ConsentStamp>,
+        iuoc: &IuocRegistry,
+        ledger: &mut EntropyLedger,
     ) -> SpeakResult {
-        let ruleset_id = self.frames[frame_idx].spec.ruleset.id.clone();
-        let enabled = self.frames[frame_idx].spec.ruleset.verbs.speak.enabled;
-        let range_m = self.frames[frame_idx].spec.ruleset.verbs.speak.range_m;
+        let ruleset_id = self.spec.ruleset.id.clone();
+        let enabled = self.spec.ruleset.verbs.speak.enabled;
+        let range_m = self.spec.ruleset.verbs.speak.range_m;
         if !enabled {
             return SpeakResult {
                 heard: false,
@@ -49,21 +51,16 @@ impl AumCore {
             };
         }
 
-        let pos = {
-            let frame = &self.frames[frame_idx];
-            frame
-                .find_avatar_for_fwau(fwau)
-                .and_then(|e| frame.world.get(e))
-                .map(|r| r.transform.position)
-                .unwrap_or(Vec3::ZERO)
-        };
+        let pos = self
+            .find_avatar_for_fwau(fwau)
+            .and_then(|e| self.world.get(e))
+            .map(|r| r.transform.position)
+            .unwrap_or(Vec3::ZERO);
 
-        let (tick, helper_iuoc) = {
-            let frame = &self.frames[frame_idx];
-            (frame.now().0, frame.iuoc_for_fwau(fwau))
-        };
+        let tick = self.now().0;
+        let helper_iuoc = self.iuoc_for_fwau(fwau);
         if let (Some(stamp), Some(helper)) = (wire_consent.as_ref(), helper_iuoc) {
-            if !verify_consent_stamp(self, helper, stamp, tick) {
+            if !iuoc.verify_consent_stamp(helper, stamp, tick) {
                 return SpeakResult {
                     heard: false,
                     listeners: 0,
@@ -72,11 +69,10 @@ impl AumCore {
             }
         }
 
-        let frame = &mut self.frames[frame_idx];
         let mut listeners = 0usize;
 
-        for entity in frame.world.all_entities() {
-            if let Some(rec) = frame.world.get(entity) {
+        for entity in self.world.all_entities() {
+            if let Some(rec) = self.world.get(entity) {
                 if rec.fwau_binding.as_ref().map(|b| b.fwau_id) == Some(fwau) {
                     continue;
                 }
@@ -88,18 +84,18 @@ impl AumCore {
             }
         }
 
-        frame.recent_speaks.push(SpeakEvent {
+        self.recent_speaks.push(SpeakEvent {
             fwau: fwau.0,
             text: trimmed.to_string(),
             tick,
         });
-        if frame.recent_speaks.len() > 32 {
-            frame.recent_speaks.remove(0);
+        if self.recent_speaks.len() > 32 {
+            self.recent_speaks.remove(0);
         }
 
-        if let Some(iuoc) = frame.iuoc_for_fwau(fwau) {
-            self.ledger.enqueue_consequence(
-                iuoc,
+        if let Some(iuoc_id) = self.iuoc_for_fwau(fwau) {
+            ledger.enqueue_consequence(
+                iuoc_id,
                 &ResolvedAction {
                     id: tick as u128,
                     aid: 0.05,
@@ -112,12 +108,12 @@ impl AumCore {
             );
         }
 
-        self.rww.publish(
-            &format!("rww.speak.{}", ruleset_id),
-            trimmed.as_bytes(),
+        self.pending_rww.push(RwwOutbox {
+            topic: format!("rww.speak.{}", ruleset_id),
+            body: trimmed.as_bytes().to_vec(),
             tick,
-            false,
-        );
+            persistent: false,
+        });
 
         SpeakResult {
             heard: listeners > 0,
@@ -129,7 +125,9 @@ impl AumCore {
             },
         }
     }
+}
 
+impl AumCore {
     pub fn grant_consent(
         &mut self,
         from: IuocId,
@@ -151,19 +149,6 @@ impl AumCore {
 
     pub fn has_consent(&self, from: IuocId, target: IuocId, scope: &str) -> bool {
         let now = self.frames.first().map(|f| f.now().0).unwrap_or(0);
-        self.iuoc
-            .get(from)
-            .map(|s| {
-                s.consent.pacts.iter().any(|p| {
-                    p.starts_with(&format!("{}:{}", scope, target.0)) && {
-                        p.rsplit(':')
-                            .next()
-                            .and_then(|t| t.parse().ok())
-                            .unwrap_or(0)
-                            >= now
-                    }
-                })
-            })
-            .unwrap_or(false)
+        self.iuoc.has_consent_pact(from, target, scope, now)
     }
 }

@@ -1,10 +1,10 @@
-//! M16 — consent-gated assist intents (spec §3).
+//! M16/M20 — consent-gated assist intents (spec §3).
 
-use crate::aum::AumCore;
-use crate::consent_wire::verify_consent_stamp;
+use crate::frame::{Frame, RwwOutbox};
 use crate::gameplay::{distance2, nearest_interactable};
 use crate::intent::ConsentStamp;
-use crate::ledger::ResolvedAction;
+use crate::iuoc::IuocRegistry;
+use crate::ledger::{EntropyLedger, ResolvedAction};
 use crate::types::{Entity, FwauId, Tick, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -20,109 +20,78 @@ pub struct AssistResult {
     pub message: String,
 }
 
-impl AumCore {
-    pub fn assist(
+impl Frame {
+  pub fn try_assist(
         &mut self,
-        frame_idx: usize,
         fwau: FwauId,
         target: Option<Entity>,
         wire_consent: Option<ConsentStamp>,
+        iuoc: &IuocRegistry,
+        ledger: &mut EntropyLedger,
     ) -> AssistResult {
-        let policy = self.frames[frame_idx].spec.ruleset.verbs.assist.clone();
+        let policy = self.spec.ruleset.verbs.assist.clone();
         if !policy.enabled {
-            return AssistResult {
-                hit: false,
-                target_name: "".into(),
-                target_entity: None,
-                healed: 0.0,
-                target_hp: 0.0,
-                player_stamina: 0.0,
-                consent_verified: false,
-                message: "Assist disabled by ruleset".into(),
-            };
+            return fail_assist("Assist disabled by ruleset");
         }
 
-        let (
-            player_entity,
-            player_pos,
-            helper_iuoc,
-            target_entity,
-            target_name,
-            is_ai,
-            target_iuoc,
-            target_hp_before,
-        ) = {
-            let frame = &self.frames[frame_idx];
-            let player_entity = frame.find_avatar_for_fwau(fwau);
-            if player_entity.is_none() {
-                return fail_assist("No avatar bound");
-            }
-            let player_entity = player_entity.unwrap();
-            let player_pos = frame
+        let player_entity = self.find_avatar_for_fwau(fwau);
+        if player_entity.is_none() {
+            return fail_assist("No avatar bound");
+        }
+        let player_entity = player_entity.unwrap();
+        let player_pos = self
+            .world
+            .get(player_entity)
+            .map(|r| r.transform.position)
+            .unwrap_or(Vec3::ZERO);
+        let helper_iuoc = self.iuoc_for_fwau(fwau);
+
+        let (target_entity, target_name) = if let Some(t) = target {
+            let name = self
                 .world
-                .get(player_entity)
-                .map(|r| r.transform.position)
-                .unwrap_or(Vec3::ZERO);
-            let helper_iuoc = frame.iuoc_for_fwau(fwau);
-
-            let (target_entity, target_name) = if let Some(t) = target {
-                let name = frame
-                    .world
-                    .get(t)
-                    .map(|r| r.name.clone())
-                    .unwrap_or_default();
-                (t, name)
-            } else {
-                match nearest_interactable(
-                    &frame.world,
-                    player_pos,
-                    policy.range_m,
-                    Some(player_entity),
-                ) {
-                    Some((e, name, _)) => (e, name),
-                    None => return fail_assist("No assist target in range"),
-                }
-            };
-
-            let target_pos = frame
-                .world
-                .get(target_entity)
-                .map(|r| r.transform.position)
-                .unwrap_or(Vec3::ZERO);
-            if distance2(player_pos, target_pos) > policy.range_m {
-                return fail_assist("Target out of range");
-            }
-
-            let target_rec = frame.world.get(target_entity);
-            let is_ai = target_rec.map(|r| r.brain.is_some()).unwrap_or(false);
-            let target_iuoc = target_rec
-                .and_then(|r| r.fwau_binding.as_ref())
-                .map(|b| b.iuoc_id);
-            let target_hp_before = target_rec
-                .and_then(|r| r.avatar.as_ref())
-                .map(|a| a.hp)
-                .unwrap_or(0.0);
-
-            (
-                player_entity,
+                .get(t)
+                .map(|r| r.name.clone())
+                .unwrap_or_default();
+            (t, name)
+        } else {
+            match nearest_interactable(
+                &self.world,
                 player_pos,
-                helper_iuoc,
-                target_entity,
-                target_name,
-                is_ai,
-                target_iuoc,
-                target_hp_before,
-            )
+                policy.range_m,
+                Some(player_entity),
+            ) {
+                Some((e, name, _)) => (e, name),
+                None => return fail_assist("No assist target in range"),
+            }
         };
 
-        let now_tick = self.frames.get(frame_idx).map(|f| f.now().0).unwrap_or(0);
+        let target_pos = self
+            .world
+            .get(target_entity)
+            .map(|r| r.transform.position)
+            .unwrap_or(Vec3::ZERO);
+        if distance2(player_pos, target_pos) > policy.range_m {
+            return fail_assist("Target out of range");
+        }
+
+        let target_rec = self.world.get(target_entity);
+        let is_ai = target_rec.map(|r| r.brain.is_some()).unwrap_or(false);
+        let target_iuoc = target_rec
+            .and_then(|r| r.fwau_binding.as_ref())
+            .map(|b| b.iuoc_id);
+        let target_hp_before = target_rec
+            .and_then(|r| r.avatar.as_ref())
+            .map(|a| a.hp)
+            .unwrap_or(0.0);
+
+        let now_tick = self.now().0;
         let consent_verified = if is_ai && policy.ai_practice {
             true
         } else if let Some(helper_id) = helper_iuoc {
-            if let Some(stamp) = wire_consent {
-                verify_consent_stamp(self, helper_id, &stamp, now_tick)
+            if let Some(stamp) = wire_consent.as_ref() {
+                iuoc.verify_consent_stamp(helper_id, stamp, now_tick)
             } else if let Some(target_id) = target_iuoc {
-                self.has_consent(target_id, helper_id, "assist")
+                iuoc.has_consent_pact(target_id, helper_id, "assist", now_tick)
             } else {
                 false
             }
@@ -143,10 +112,8 @@ impl AumCore {
             };
         }
 
-        let frame = &mut self.frames[frame_idx];
-
         let mut player_stamina = 0.0;
-        if let Some(rec) = frame.world.get_mut(player_entity) {
+        if let Some(rec) = self.world.get_mut(player_entity) {
             let avatar = match rec.avatar.as_mut() {
                 Some(a) => a,
                 None => return fail_assist("No avatar state"),
@@ -162,11 +129,11 @@ impl AumCore {
             rec.dirty = true;
         }
 
-        let now = frame.now().0;
+        let now = self.now().0;
         let mut healed = 0.0;
         let mut target_hp = 0.0;
 
-        if let Some(rec) = frame.world.get_mut(target_entity) {
+        if let Some(rec) = self.world.get_mut(target_entity) {
             if let Some(avatar) = &mut rec.avatar {
                 let before = avatar.hp;
                 avatar.hp = (avatar.hp + policy.heal_amount).min(100.0);
@@ -183,9 +150,9 @@ impl AumCore {
             return fail_assist("Target missing");
         }
 
-        if let Some(iuoc) = helper_iuoc {
-            self.ledger.enqueue_consequence(
-                iuoc,
+        if let Some(iuoc_id) = helper_iuoc {
+            ledger.enqueue_consequence(
+                iuoc_id,
                 &ResolvedAction {
                     id: now as u128,
                     aid: policy.aid_entropy,
@@ -198,12 +165,12 @@ impl AumCore {
             );
         }
 
-        self.rww.publish(
-            &format!("rww.assist.{}", frame.spec.ruleset.id),
-            format!("{} healed {:.0}", target_name, healed).as_bytes(),
-            now,
-            false,
-        );
+        self.pending_rww.push(RwwOutbox {
+            topic: format!("rww.assist.{}", self.spec.ruleset.id),
+            body: format!("{} healed {:.0}", target_name, healed).into_bytes(),
+            tick: now,
+            persistent: false,
+        });
 
         AssistResult {
             hit: true,
@@ -225,7 +192,7 @@ impl AumCore {
     }
 }
 
-fn fail_assist(msg: &str) -> AssistResult {
+pub fn fail_assist(msg: &str) -> AssistResult {
     AssistResult {
         hit: false,
         target_name: "".into(),
@@ -241,6 +208,7 @@ fn fail_assist(msg: &str) -> AssistResult {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::aum::AumCore;
     use crate::types::Vec3;
 
     #[test]
