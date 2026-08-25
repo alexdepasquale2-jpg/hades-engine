@@ -32,6 +32,14 @@
     "speak": {
       "enabled": true,
       "range_m": 20
+    },
+    "assist": {
+      "enabled": true,
+      "range_m": 6,
+      "stamina_cost": 10,
+      "heal_amount": 20,
+      "aid_entropy": 0.3,
+      "ai_practice": false
     }
   }
 }

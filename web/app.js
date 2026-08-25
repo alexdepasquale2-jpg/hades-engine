@@ -50,6 +50,7 @@ document.getElementById("btn-pmr").addEventListener("click", () => handoff("pmr.
 document.getElementById("btn-unbind").addEventListener("click", unbindDeath);
 document.getElementById("btn-attack").addEventListener("click", () => attackNearest());
 document.getElementById("btn-interact").addEventListener("click", () => interactNearest());
+document.getElementById("btn-assist").addEventListener("click", () => assistNearest());
 
 window.addEventListener("keydown", (e) => {
   keys[e.code] = true;
@@ -65,6 +66,10 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyE") {
     e.preventDefault();
     interactNearest();
+  }
+  if (e.code === "KeyG") {
+    e.preventDefault();
+    assistNearest();
   }
   if (e.code === "KeyT") {
     e.preventDefault();
@@ -238,14 +243,35 @@ async function speak() {
   }
 }
 
+async function assistNearest() {
+  if (!session.fwau) return;
+  const res = await fetch("/api/assist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau }),
+  });
+  const data = await res.json();
+  if (data.hit) {
+    flash("correction-flash", data.message);
+    document.getElementById("player-stamina").textContent = Math.round(data.player_stamina);
+  } else {
+    flash("reject-flash", data.message);
+  }
+}
+
 async function grantConsent() {
   if (!session.fwau || !session.iuoc) return;
+  const helperIuoc = prompt(
+    "Helper IUOC id (grant this soul permission to assist you):",
+    String(session.iuoc)
+  );
+  if (!helperIuoc) return;
   const res = await fetch("/api/consent", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       fwau: session.fwau,
-      target_iuoc: session.iuoc,
+      helper_iuoc: Number(helperIuoc),
       scope: "assist",
       ttl_ticks: 50000,
     }),

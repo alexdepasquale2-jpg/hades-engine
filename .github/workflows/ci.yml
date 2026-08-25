@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Build workspace
+        run: cargo build --workspace --release
+
+      - name: Test tbc-engine
+        run: cargo test -p tbc-engine
+
+      - name: Clippy (engine, warnings allowed)
+        run: cargo clippy -p tbc-engine --all-targets

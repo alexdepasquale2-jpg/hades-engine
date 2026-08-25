@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M15 vertical slice** of the spec:
+**M1–M16 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -24,6 +24,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `CrdtProp` / `PropStore` | M14 | Or-set props in NPMR frames from interact |
 | `VerbPolicies` | M13/M15 | Attack/interact/speak from ruleset JSON |
 | `query_psi` / `speak` | M15 | Ruleset-gated psi scopes + social broadcast |
+| `assist` | M16 | Consent-gated heal + NPMR AI practice mode |
 | `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
 | Debug server | §10 | HTTP + WebSocket — cluster **6014**, shard-00 **6020**, shard-01 **6021** |
@@ -71,7 +72,7 @@ Default cluster mode (no `TBC_SHARD_ID`) keeps in-process handoff on port **6014
 3. **WASD** — move; walk **east (→)** past the yellow seam at x=0 for shard handoff
 4. **Unbind / death** — experience packets persist; reincarnation offers use archived history
 5. **Enter NPMR-Academy** — frame handoff via RWW
-6. **B** — blink in NPMR · **F** strike · **E** interact · **T** speak · psi scopes (PMR: FutureSelf/PastOwn; NPMR: +PastShared/FutureIsland/RwwQuery)
+6. **B** — blink in NPMR · **F** strike · **E** interact · **G** assist (NPMR AI practice) · **T** speak · psi scopes
 
 ### QUIC gateway (M12 production transport)
 
@@ -124,7 +125,7 @@ docker compose up --build
 cargo test -p tbc-engine
 ```
 
-35+ tests cover core simulation, M8–M15.
+35+ tests cover core simulation, M8–M16.
 
 ```bash
 cargo test -p tbc-engine scale_guardrails
@@ -134,6 +135,7 @@ cargo test -p tbc-engine ops_health
 cargo test -p tbc-engine gameplay_ruleset
 cargo test -p tbc-engine npmr_dream
 cargo test -p tbc-engine psi_social
+cargo test -p tbc-engine assist
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
@@ -180,6 +182,7 @@ Transport
 | M13 Gameplay depth (ruleset-driven) | Done |
 | M14 NPMR Dream + CRDT props + handoff policy | Done |
 | M15 Psi scopes + Speak + Consent | Done |
+| M16 Consent-gated assist + CI | Done |
 
 ## Rulesets
 
