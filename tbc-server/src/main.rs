@@ -16,6 +16,7 @@ use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use tbc_engine::intent::{Intent, Verb};
@@ -161,6 +162,7 @@ async fn main() {
     }
   }
 
+  let web_root = web_root();
   let app = Router::new()
     .route("/", get(index))
     .route("/api/status", get(status))
@@ -174,8 +176,11 @@ async fn main() {
     .route("/api/unbind", axum::routing::post(unbind))
     .route("/api/reincarnate", axum::routing::post(reincarnate))
     .route("/api/rww", get(rww_recent))
+    .route("/health", get(health))
+    .route("/ready", get(ready))
+    .route("/metrics", get(metrics))
     .route("/ws", get(ws_handler))
-    .nest_service("/static", ServeDir::new("web"))
+    .nest_service("/static", ServeDir::new(web_root.to_string_lossy().to_string()))
     .layer(CorsLayer::permissive())
     .with_state(state.clone());
 
@@ -191,8 +196,16 @@ async fn main() {
 }
 
 async fn index() -> Html<String> {
-  let path = format!("{}/../web/index.html", env!("CARGO_MANIFEST_DIR"));
+  let path = web_root().join("index.html");
   Html(std::fs::read_to_string(path).unwrap_or_else(|_| "<h1>TBC</h1>".into()))
+}
+
+fn web_root() -> PathBuf {
+  std::env::var("TBC_WEB_ROOT")
+    .map(PathBuf::from)
+    .unwrap_or_else(|_| {
+      PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../web")
+    })
 }
 
 async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
@@ -239,6 +252,34 @@ fn spawn_pos_for_node(node: &ShardNodeConfig) -> Vec3 {
     Some(1) => Vec3::new(80.0, 0.0, 0.0),
     _ => Vec3::new(-80.0, 0.0, 0.0),
   }
+}
+
+async fn health(State(state): State<Arc<AppState>>) -> Json<tbc_engine::ops::OpsSnapshot> {
+  let sessions = state.sessions.lock().await.len();
+  let guard = state.aum.lock().await;
+  Json(guard.ops_snapshot(sessions))
+}
+
+async fn ready(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+  let sessions = state.sessions.lock().await.len();
+  let guard = state.aum.lock().await;
+  let snap = guard.ops_snapshot(sessions);
+  let status = if snap.ready {
+    axum::http::StatusCode::OK
+  } else {
+    axum::http::StatusCode::SERVICE_UNAVAILABLE
+  };
+  (status, Json(snap))
+}
+
+async fn metrics(State(state): State<Arc<AppState>>) -> impl IntoResponse {
+  let sessions = state.sessions.lock().await.len();
+  let guard = state.aum.lock().await;
+  let body = guard.ops_snapshot(sessions).prometheus_lines();
+  (
+    [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+    body,
+  )
 }
 
 async fn login(State(state): State<Arc<AppState>>) -> Json<LoginResponse> {

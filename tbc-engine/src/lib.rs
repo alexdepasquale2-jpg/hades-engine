@@ -14,6 +14,7 @@ pub mod intent;
 pub mod iuoc;
 pub mod ledger;
 pub mod netcode;
+pub mod ops;
 pub mod persist;
 pub mod planner;
 pub mod ruleset;
@@ -165,6 +166,10 @@ pub mod aum {
         distributed: self.node.distributed,
         frame_count: self.frames.len(),
       }
+    }
+
+    pub fn ops_snapshot(&self, active_sessions: usize) -> crate::ops::OpsSnapshot {
+      crate::ops::OpsSnapshot::from_aum(self, active_sessions)
     }
 
     /// M7 legacy cluster boot (in-memory souls).

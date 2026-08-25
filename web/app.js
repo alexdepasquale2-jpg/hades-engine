@@ -13,6 +13,13 @@ let isNpmr = false;
 let shardId = null;
 let nodeDistributed = false;
 
+function updateOps(ops) {
+  if (!ops) return;
+  document.getElementById("ops-ready").textContent = ops.ready ? "yes" : "no";
+  document.getElementById("ops-status").textContent = ops.status || "—";
+  document.getElementById("ops-version").textContent = ops.version || "—";
+}
+
 function updateNodeStatus(node) {
   if (!node) return;
   nodeDistributed = node.distributed;
@@ -354,6 +361,10 @@ async function pollStatus() {
     }
     updateRww(data.rww, null);
     updateNodeStatus(data.node);
+    const healthRes = await fetch("/health");
+    if (healthRes.ok) {
+      updateOps(await healthRes.json());
+    }
   } catch (_) {}
 }
 

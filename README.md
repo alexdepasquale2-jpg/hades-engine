@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M11 vertical slice** of the spec:
+**M1–M12 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -21,9 +21,10 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `Reincarnation planner` | §11 M7 | K=5 ranked offers, accept + rebirth |
 | `RwwBus` | §9 M10 | In-memory + NATS JetStream (`TBC_RWW` stream) |
 | `transport` | §10 | Framed JSON reliable + 36-byte move datagrams |
+| `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
 | Debug server | §10 | HTTP + WebSocket — cluster **6014**, shard-00 **6020**, shard-01 **6021** |
-| QUIC gateway | §10 | `tbc-gateway` on **4433** (quinn) |
+| QUIC gateway | §10 M12 | TLS/mTLS QUIC **4433**, ops HTTP **9443** |
 
 ## Quick start
 
@@ -69,18 +70,49 @@ Default cluster mode (no `TBC_SHARD_ID`) keeps in-process handoff on port **6014
 5. **Enter NPMR-Academy** — frame handoff via RWW
 6. **B** — blink in NPMR · **FutureSelf / PastOwn** — psi queries
 
-### QUIC gateway (transport layer)
+### QUIC gateway (M12 production transport)
 
 ```bash
 cargo run -p tbc-gateway --release
 ```
 
-Listens on **quic://127.0.0.1:4433** with a self-signed cert. Shares the same `TBC_ARCHIVE_PATH` as the HTTP server.
+Listens on **quic://127.0.0.1:4433** (override with `TBC_QUIC_PORT`). Ops HTTP on **http://127.0.0.1:9443** (`/health`, `/ready`, `/metrics`).
+
+Production TLS — set PEM paths (omit for dev self-signed cert):
+
+```bash
+export TBC_TLS_CERT=/path/to/cert.pem
+export TBC_TLS_KEY=/path/to/key.pem
+# Optional mTLS:
+# export TBC_TLS_CLIENT_CA=/path/to/client-ca.pem
+./deploy/generate-dev-tls.sh deploy/tls
+```
+
+Shares `TBC_ARCHIVE_PATH` with the HTTP server. Supports `TBC_SHARD_ID` for shard-only gateway nodes.
 
 Smoke-test client:
 
 ```bash
 cargo run -p tbc-gateway --release --example quic_client
+```
+
+### Ops endpoints (M12)
+
+| Endpoint | Server | Gateway ops |
+| --- | --- | --- |
+| `GET /health` | `:6014` | `:9443` |
+| `GET /ready` | `:6014` | `:9443` |
+| `GET /metrics` | `:6014` | `:9443` |
+
+See **ops/RUNBOOK.md** for probes, Docker Compose, and incident playbooks.
+
+### Docker Compose
+
+```bash
+cd deploy
+cp env.example .env
+./generate-dev-tls.sh tls
+docker compose up --build
 ```
 
 ### Run tests
@@ -89,12 +121,13 @@ cargo run -p tbc-gateway --release --example quic_client
 cargo test -p tbc-engine
 ```
 
-26 tests cover core simulation, M8 guardrails, M9 archive hydration, M10 RWW, and M11 shard crossing.
+29 tests cover core simulation, M8–M12 (guardrails, archive, RWW, shards, ops).
 
 ```bash
 cargo test -p tbc-engine scale_guardrails
 cargo test -p tbc-engine persist_hydrate
 cargo test -p tbc-engine shard_multinode
+cargo test -p tbc-engine ops_health
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
@@ -117,8 +150,8 @@ AUM_Core
 └── Reincarnation planner  K=5 ranked packet templates
 
 Transport
-├── tbc-server           HTTP/WebSocket (debug UI)
-└── tbc-gateway          QUIC (quinn) reliable + datagram moves
+├── tbc-server           HTTP/WebSocket (debug UI) + /health /ready /metrics
+└── tbc-gateway          QUIC TLS/mTLS + ops HTTP :9443
 ```
 
 ## Milestones
@@ -136,7 +169,7 @@ Transport
 | M9 Persistent IUOC + experience archive | Done |
 | M10 Real RWW (NATS JetStream) | Done |
 | M11 Multi-node PMR sharding | Done |
-| M12 Production transport + ops | Planned |
+| M12 Production transport + ops | Done |
 | M13 Gameplay depth (ruleset-driven) | Planned |
 
 ## Rulesets

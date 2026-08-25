@@ -1888,10 +1888,12 @@ dependencies = [
 name = "tbc-gateway"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "blake3",
  "quinn",
  "rcgen",
  "rustls",
+ "rustls-pemfile",
  "serde",
  "serde_json",
  "tbc-engine",

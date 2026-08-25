@@ -1,9 +1,9 @@
-//! QUIC gateway — spec §10 transport: unreliable Move datagrams, reliable intent streams.
+//! QUIC gateway — spec §10 transport + M12 production TLS/mTLS and ops HTTP.
 
+mod tls;
+
+use axum::{routing::get, Json, Router};
 use quinn::{Endpoint, ServerConfig};
-use rcgen::generate_simple_self_signed;
-use rustls::pki_types::{CertificateDer, PrivateKeyDer};
-use rustls::ServerConfig as RustlsServerConfig;
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -11,6 +11,7 @@ use std::time::Duration;
 use tbc_engine::aum::AumCore;
 use tbc_engine::intent::{Intent, Verb};
 use tbc_engine::persist::SoulArchive;
+use tbc_engine::shard::ShardNodeConfig;
 use tbc_engine::transport::{
   drain_reliable, decode_move_datagram, encode_reliable, WireMessage,
 };
@@ -37,14 +38,29 @@ async fn main() {
     .init();
 
   let genesis = *blake3::hash(b"TBC-GENESIS-QUIC").as_bytes();
-  let archive_path = std::env::var("TBC_ARCHIVE_PATH").unwrap_or_else(|_| "data/tbc-archive.db".into());
+  let archive_path =
+    std::env::var("TBC_ARCHIVE_PATH").unwrap_or_else(|_| "data/tbc-archive.db".into());
   let archive = SoulArchive::open(&archive_path).expect("open soul archive");
-  let aum = AumCore::boot_cluster_with_archive(genesis, archive).expect("boot cluster");
+  let node = ShardNodeConfig::from_env();
+  let aum = AumCore::boot_node_with_archive(genesis, archive, node.clone()).expect("boot node");
   info!(
-    "RWW backend={} connected={}",
+    "Gateway node mode={} shard={:?} RWW backend={} connected={}",
+    aum.node.label(),
+    aum.node.shard_id,
     aum.rww.status().backend,
     aum.rww.status().connected
   );
+
+  let tls_paths = tls::TlsPaths::from_env().expect("load TLS paths");
+  if tls_paths.is_some() {
+    info!("TLS: using TBC_TLS_CERT / TBC_TLS_KEY");
+    if std::env::var("TBC_TLS_CLIENT_CA").is_ok() {
+      info!("TLS: mTLS client CA configured");
+    }
+  } else {
+    info!("TLS: self-signed dev certificate (set TBC_TLS_CERT and TBC_TLS_KEY for production)");
+  }
+
   let state = Arc::new(GatewayState {
     aum: Mutex::new(aum),
     sessions: Mutex::new(HashMap::new()),
@@ -52,15 +68,59 @@ async fn main() {
 
   {
     let mut guard = state.aum.lock().await;
-    guard.frames[0].spawn_demo_world(40);
-    guard.frames[1].spawn_demo_world(40);
-    guard.frames[2].spawn_demo_world(8);
+    for (i, frame) in guard.frames.iter_mut().enumerate() {
+      let count = if node.distributed {
+        40
+      } else if i < 2 {
+        40
+      } else {
+        8
+      };
+      frame.spawn_demo_world(count);
+    }
   }
 
-  let sim = state.clone();
+  spawn_sim_loop(state.clone());
+
+  let health_state = state.clone();
+  let health_port = std::env::var("TBC_HEALTH_PORT")
+    .ok()
+    .and_then(|p| p.parse().ok())
+    .unwrap_or(9443);
+  tokio::spawn(async move {
+    let app = Router::new()
+      .route("/health", get(health_handler))
+      .route("/ready", get(ready_handler))
+      .route("/metrics", get(metrics_handler))
+      .with_state(health_state);
+    let addr = SocketAddr::from(([0, 0, 0, 0], health_port));
+    info!("Gateway ops HTTP on http://{}", addr);
+    let listener = tokio::net::TcpListener::bind(addr).await.expect("bind health");
+    axum::serve(listener, app).await.expect("health server");
+  });
+
+  let quic_port = std::env::var("TBC_QUIC_PORT")
+    .ok()
+    .and_then(|p| p.parse().ok())
+    .unwrap_or(4433);
+  let addr: SocketAddr = format!("0.0.0.0:{}", quic_port).parse().unwrap();
+  let endpoint = make_endpoint(addr, tls_paths).expect("QUIC endpoint");
+  info!("TBC QUIC gateway listening on quic://{}", addr);
+
+  while let Some(conn) = endpoint.accept().await {
+    let state = state.clone();
+    tokio::spawn(async move {
+      if let Ok(connection) = conn.await {
+        handle_connection(connection, state).await;
+      }
+    });
+  }
+}
+
+fn spawn_sim_loop(state: Arc<GatewayState>) {
   tokio::spawn(async move {
     loop {
-      let mut guard = sim.aum.lock().await;
+      let mut guard = state.aum.lock().await;
       for i in 0..guard.frames.len() {
         let dt = Duration::from_millis(guard.frames[i].spec.ruleset.dt_ms as u64);
         let steps = guard.frames[i].drain_elapsed(dt);
@@ -68,12 +128,27 @@ async fn main() {
           guard.run_frame_ticks(i, steps);
         }
       }
+      let inbound = guard.process_inbound_shard_crosses();
       let handoffs = guard.process_shard_handoffs();
       drop(guard);
 
-      if !handoffs.is_empty() {
-        let mut sessions = sim.sessions.lock().await;
+      if !inbound.is_empty() || !handoffs.is_empty() {
+        let mut sessions = state.sessions.lock().await;
+        for (fwau, iuoc) in inbound {
+          sessions.insert(
+            fwau,
+            SessionInfo {
+              iuoc,
+              fwau,
+              frame_idx: 0,
+            },
+          );
+        }
         for (old_fwau, new_fwau, to_idx) in handoffs {
+          if new_fwau.0 == 0 {
+            sessions.remove(&old_fwau);
+            continue;
+          }
           if let Some(info) = sessions.remove(&old_fwau) {
             sessions.insert(
               new_fwau,
@@ -90,32 +165,47 @@ async fn main() {
       tokio::time::sleep(Duration::from_millis(50)).await;
     }
   });
-
-  let addr: SocketAddr = "0.0.0.0:4433".parse().unwrap();
-  let endpoint = make_endpoint(addr).expect("QUIC endpoint");
-  info!("TBC QUIC gateway listening on quic://{}", addr);
-
-  while let Some(conn) = endpoint.accept().await {
-    let state = state.clone();
-    tokio::spawn(async move {
-      if let Ok(connection) = conn.await {
-        handle_connection(connection, state).await;
-      }
-    });
-  }
 }
 
-fn make_endpoint(addr: SocketAddr) -> Result<Endpoint, Box<dyn std::error::Error>> {
-  let cert = generate_simple_self_signed(vec!["localhost".into(), "127.0.0.1".into()])?;
-  let cert_der = cert.serialize_der()?;
-  let key_der = cert.serialize_private_key_der();
-  let priv_key = PrivateKeyDer::Pkcs8(key_der.into());
-  let cert_chain = vec![CertificateDer::from(cert_der)];
+async fn health_handler(
+  axum::extract::State(state): axum::extract::State<Arc<GatewayState>>,
+) -> Json<tbc_engine::ops::OpsSnapshot> {
+  let sessions = state.sessions.lock().await.len();
+  let guard = state.aum.lock().await;
+  Json(guard.ops_snapshot(sessions))
+}
 
-  let rustls_config = RustlsServerConfig::builder()
-    .with_no_client_auth()
-    .with_single_cert(cert_chain, priv_key)?;
+async fn ready_handler(
+  axum::extract::State(state): axum::extract::State<Arc<GatewayState>>,
+) -> impl axum::response::IntoResponse {
+  let sessions = state.sessions.lock().await.len();
+  let guard = state.aum.lock().await;
+  let snap = guard.ops_snapshot(sessions);
+  let status = if snap.ready {
+    axum::http::StatusCode::OK
+  } else {
+    axum::http::StatusCode::SERVICE_UNAVAILABLE
+  };
+  (status, Json(snap))
+}
 
+async fn metrics_handler(
+  axum::extract::State(state): axum::extract::State<Arc<GatewayState>>,
+) -> impl axum::response::IntoResponse {
+  let sessions = state.sessions.lock().await.len();
+  let guard = state.aum.lock().await;
+  let body = guard.ops_snapshot(sessions).prometheus_lines();
+  (
+    [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+    body,
+  )
+}
+
+fn make_endpoint(
+  addr: SocketAddr,
+  tls_paths: Option<tls::TlsPaths>,
+) -> Result<Endpoint, Box<dyn std::error::Error>> {
+  let rustls_config = tls::build_rustls_server_config(tls_paths)?;
   let quic_crypto = quinn::crypto::rustls::QuicServerConfig::try_from(rustls_config)?;
   let server_config = ServerConfig::with_crypto(Arc::new(quic_crypto));
   Endpoint::server(server_config, addr).map_err(|e| e.into())
@@ -148,7 +238,6 @@ async fn handle_connection(connection: quinn::Connection, state: Arc<GatewayStat
     }
   });
 
-  // Unreliable move datagrams
   let state_d = state.clone();
   tokio::spawn(async move {
     loop {
@@ -173,7 +262,7 @@ async fn handle_reliable(
     "login" => {
       let mut guard = state.aum.lock().await;
       let iuoc = guard.iuoc.create_soul();
-      let pos = Vec3::new(-80.0, 0.0, 0.0);
+      let pos = spawn_pos_for_node(&guard.node);
       let fwau = guard.bind_player(0, iuoc, pos).unwrap();
       state.sessions.lock().await.insert(
         fwau,
@@ -205,6 +294,13 @@ async fn handle_reliable(
       }
     }
     _ => warn!("unknown wire kind: {}", msg.kind),
+  }
+}
+
+fn spawn_pos_for_node(node: &ShardNodeConfig) -> Vec3 {
+  match node.shard_id {
+    Some(1) => Vec3::new(80.0, 0.0, 0.0),
+    _ => Vec3::new(-80.0, 0.0, 0.0),
   }
 }
 
