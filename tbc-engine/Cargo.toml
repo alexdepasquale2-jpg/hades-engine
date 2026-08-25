@@ -13,5 +13,6 @@ rand.workspace = true
 rand_pcg.workspace = true
 blake3.workspace = true
 ulid.workspace = true
+rusqlite.workspace = true
 
 [dev-dependencies]

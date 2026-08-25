@@ -10,13 +10,14 @@
   <div class="app">
     <header>
       <h1>The Big Computer</h1>
-      <p class="subtitle">TBC Engine · M8 guardrails · scale-tested</p>
+      <p class="subtitle">TBC Engine · M9 persistent souls</p>
     </header>
 
     <aside class="panel">
       <section>
         <h2>Session</h2>
         <button id="btn-login" class="primary">Partition FWAU</button>
+        <button id="btn-resume" class="hidden">Resume soul</button>
         <div id="session-info" class="muted">No IUOC bound</div>
         <div id="frame-info" class="stat"><span>Frame</span><strong id="frame-name">—</strong></div>
         <div class="stat"><span>Shard</span><strong id="shard-id">—</strong></div>
@@ -36,6 +37,13 @@
         <div class="stat"><span>Δt</span><strong id="dt">50 ms</strong></div>
         <div id="correction-flash" class="correction hidden">Correction applied</div>
         <div id="reject-flash" class="reject hidden"></div>
+      </section>
+
+      <section>
+        <h2>Archive (M9)</h2>
+        <div class="stat"><span>Souls stored</span><strong id="archive-souls">0</strong></div>
+        <div class="stat"><span>Packets stored</span><strong id="archive-packets">0</strong></div>
+        <p class="hint">SQLite archive survives restarts · set TBC_ARCHIVE_PATH</p>
       </section>
 
       <section>

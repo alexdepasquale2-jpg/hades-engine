@@ -1,6 +1,7 @@
 use crate::types::{
   AvatarId, FwauId, FrameId, IuocId, PacketId, QualityScalar, Tick,
 };
+use crate::persist::{ArchiveStats, PersistError, SoulArchive};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -78,6 +79,7 @@ pub struct IuocRegistry {
   souls: HashMap<IuocId, IUOC>,
   fwau_sessions: HashMap<FwauId, FWAU>,
   packets: HashMap<IuocId, Vec<ExperiencePacket>>,
+  archive: Option<SoulArchive>,
 }
 
 impl IuocRegistry {
@@ -86,6 +88,53 @@ impl IuocRegistry {
       souls: HashMap::new(),
       fwau_sessions: HashMap::new(),
       packets: HashMap::new(),
+      archive: None,
+    }
+  }
+
+  pub fn with_archive(archive: SoulArchive) -> Result<Self, PersistError> {
+    let mut reg = Self::new();
+    reg.archive = Some(archive);
+    reg.hydrate()?;
+    Ok(reg)
+  }
+
+  pub fn attach_archive(&mut self, archive: SoulArchive) -> Result<(), PersistError> {
+    self.archive = Some(archive);
+    self.hydrate()?;
+    Ok(())
+  }
+
+  pub fn archive_stats(&self) -> Option<ArchiveStats> {
+    self
+      .archive
+      .as_ref()
+      .and_then(|a| a.stats().ok())
+  }
+
+  fn hydrate(&mut self) -> Result<(), PersistError> {
+    if let Some(archive) = self.archive.as_ref() {
+      for soul in archive.load_souls()? {
+        self.souls.insert(soul.id, soul);
+      }
+      for (iuoc, list) in archive.load_packets()? {
+        self.packets.insert(iuoc, list);
+      }
+    }
+    Ok(())
+  }
+
+  fn persist_soul(&self, iuoc: IuocId) {
+    if let Some(archive) = &self.archive {
+      if let Some(soul) = self.souls.get(&iuoc) {
+        archive.upsert_soul(soul).ok();
+      }
+    }
+  }
+
+  fn persist_packet(&self, packet: &ExperiencePacket) {
+    if let Some(archive) = &self.archive {
+      archive.insert_packet(packet).ok();
     }
   }
 
@@ -102,6 +151,7 @@ impl IuocRegistry {
         prefs: ReincarnationPrefs::default(),
       },
     );
+    self.persist_soul(id);
     id
   }
 
@@ -142,6 +192,7 @@ impl IuocRegistry {
     soul.bound_fwau = Some(fwau_id);
     soul.incarnations += 1;
     self.fwau_sessions.insert(fwau_id, fwau);
+    self.persist_soul(iuoc);
     Ok(fwau_id)
   }
 
@@ -175,6 +226,9 @@ impl IuocRegistry {
       .entry(fwau.iuoc_id)
       .or_default()
       .push(packet.clone());
+
+    self.persist_soul(fwau.iuoc_id);
+    self.persist_packet(&packet);
 
     Some(packet)
   }

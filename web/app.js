@@ -16,6 +16,7 @@ const canvas = document.getElementById("world");
 const ctx = canvas.getContext("2d");
 
 document.getElementById("btn-login").addEventListener("click", login);
+document.getElementById("btn-resume").addEventListener("click", resumeSoul);
 document.getElementById("btn-psi").addEventListener("click", () => queryPsi("FutureSelf"));
 document.getElementById("btn-past").addEventListener("click", () => queryPsi("PastOwn"));
 document.getElementById("btn-npmr").addEventListener("click", () => handoff("npmr.academy.v1"));
@@ -64,11 +65,45 @@ async function login() {
   const res = await fetch("/api/login");
   const data = await res.json();
   session = { iuoc: data.iuoc, fwau: data.fwau, band: data.quality_band, frame: data.frame };
+  localStorage.setItem("tbc_iuoc", String(data.iuoc));
+  showResumeButton();
   isNpmr = data.frame.includes("npmr");
   document.getElementById("session-info").textContent =
     `IUOC ${data.iuoc.toString().slice(0, 8)}…`;
   document.getElementById("frame-name").textContent = data.frame;
   setBand(data.quality_band);
+  clearOffers();
+  connectWs();
+}
+
+function showResumeButton() {
+  const stored = localStorage.getItem("tbc_iuoc");
+  const btn = document.getElementById("btn-resume");
+  if (stored && !session.fwau) {
+    btn.classList.remove("hidden");
+  } else if (stored) {
+    btn.classList.remove("hidden");
+  } else {
+    btn.classList.add("hidden");
+  }
+}
+
+async function resumeSoul() {
+  const iuoc = localStorage.getItem("tbc_iuoc");
+  if (!iuoc) return;
+  const res = await fetch(`/api/resume?iuoc=${iuoc}`);
+  const data = await res.json();
+  if (!data.fwau) {
+    flash("reject-flash", data.message);
+    return;
+  }
+  session = { iuoc: data.iuoc, fwau: data.fwau, band: data.quality_band, frame: data.frame };
+  isNpmr = data.frame.includes("npmr");
+  document.getElementById("session-info").textContent =
+    `IUOC ${data.iuoc.toString().slice(0, 8)}… (resumed)`;
+  document.getElementById("frame-name").textContent = data.frame;
+  setBand(data.quality_band);
+  flash("correction-flash", data.message);
   clearOffers();
   connectWs();
 }
@@ -268,8 +303,14 @@ async function pollStatus() {
     }
     updateProfiler(data.island_profiler);
     updateGuardrails(data.guardrails);
+    if (data.archive) {
+      document.getElementById("archive-souls").textContent = data.archive.souls;
+      document.getElementById("archive-packets").textContent = data.archive.packets;
+    }
   } catch (_) {}
 }
+
+showResumeButton();
 
 function draw() {
   ctx.fillStyle = isNpmr ? "#0a0814" : "#060a10";

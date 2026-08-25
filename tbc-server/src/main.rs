@@ -10,6 +10,7 @@ use axum::{
 };
 use tbc_engine::aum::AumCore;
 use tbc_engine::frame::FrameSnapshot;
+use tbc_engine::persist::SoulArchive;
 use tbc_engine::planner::ReincarnationOffer;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -46,6 +47,7 @@ struct StatusResponse {
   frames: Vec<FrameInfo>,
   island_profiler: Option<tbc_engine::islands::IslandProfiler>,
   guardrails: Option<tbc_engine::guardrails::GuardrailReport>,
+  archive: Option<tbc_engine::persist::ArchiveStats>,
 }
 
 #[derive(Serialize)]
@@ -120,7 +122,10 @@ async fn main() {
     .init();
 
   let genesis = *blake3::hash(b"TBC-GENESIS-M2").as_bytes();
-  let aum = AumCore::boot_full(genesis);
+  let archive_path = std::env::var("TBC_ARCHIVE_PATH").unwrap_or_else(|_| "data/tbc-archive.db".into());
+  let archive = SoulArchive::open(&archive_path).expect("open soul archive");
+  info!("Soul archive at {} ({} souls)", archive.path(), archive.stats().map(|s| s.souls).unwrap_or(0));
+  let aum = AumCore::boot_cluster_with_archive(genesis, archive).expect("boot cluster");
 
   let state = Arc::new(AppState {
     aum: Mutex::new(aum),
@@ -138,6 +143,7 @@ async fn main() {
     .route("/", get(index))
     .route("/api/status", get(status))
     .route("/api/login", get(login))
+    .route("/api/resume", get(resume))
     .route("/api/move", axum::routing::post(move_player))
     .route("/api/blink", axum::routing::post(blink))
     .route("/api/handoff", axum::routing::post(handoff))
@@ -188,6 +194,7 @@ async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
     frames,
     island_profiler: frame.island_profiler.clone(),
     guardrails: frame.guardrails.clone(),
+    archive: guard.archive_stats(),
   })
 }
 
@@ -221,6 +228,51 @@ async fn login(State(state): State<Arc<AppState>>) -> Json<LoginResponse> {
     frame: frame_name,
     message: "IUOC partitioned. FWAU bound. Something settled.".to_string(),
   })
+}
+
+#[derive(Deserialize)]
+struct ResumeQuery {
+  iuoc: u128,
+}
+
+async fn resume(State(state): State<Arc<AppState>>, Query(q): Query<ResumeQuery>) -> Json<LoginResponse> {
+  let iuoc = IuocId(q.iuoc);
+  let mut guard = state.aum.lock().await;
+  let pos = Vec3::new(-80.0, 0.0, 0.0);
+  let result = guard.resume_soul(iuoc, 0, pos);
+  match result {
+    Ok(fwau) => {
+      let frame_name = guard.frames[0].spec.ruleset.id.clone();
+      state.sessions.lock().await.insert(
+        fwau,
+        SessionInfo {
+          iuoc,
+          fwau,
+          frame_idx: 0,
+        },
+      );
+      let band = guard
+        .iuoc
+        .get(iuoc)
+        .map(|s| s.quality.band().label().to_string())
+        .unwrap_or_else(|| "Settled".to_string());
+      let inc = guard.iuoc.get(iuoc).map(|s| s.incarnations).unwrap_or(0);
+      Json(LoginResponse {
+        iuoc: iuoc.0,
+        fwau: fwau.0,
+        quality_band: band,
+        frame: frame_name,
+        message: format!("Soul resumed. Incarnation {} continues.", inc),
+      })
+    }
+    Err(e) => Json(LoginResponse {
+      iuoc: iuoc.0,
+      fwau: 0,
+      quality_band: "—".to_string(),
+      frame: "—".to_string(),
+      message: e,
+    }),
+  }
 }
 
 fn submit_move(frame: &mut tbc_engine::frame::Frame, fwau: FwauId, dx: f32, dy: f32, tick: Tick) {

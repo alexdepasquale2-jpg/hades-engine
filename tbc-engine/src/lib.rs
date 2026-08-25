@@ -14,6 +14,7 @@ pub mod intent;
 pub mod iuoc;
 pub mod ledger;
 pub mod netcode;
+pub mod persist;
 pub mod planner;
 pub mod ruleset;
 pub mod rww;
@@ -55,7 +56,19 @@ pub mod aum {
 
     /// M7: PMR shard-00, shard-01, NPMR-Academy
     pub fn boot_cluster(genesis_hash: [u8; 32]) -> Self {
-      let iuoc = IuocRegistry::new();
+      Self::boot_cluster_inner(genesis_hash, IuocRegistry::new())
+    }
+
+    /// M9: cluster boot with SQLite soul archive hydration.
+    pub fn boot_cluster_with_archive(
+      genesis_hash: [u8; 32],
+      archive: crate::persist::SoulArchive,
+    ) -> Result<Self, crate::persist::PersistError> {
+      let iuoc = IuocRegistry::with_archive(archive)?;
+      Ok(Self::boot_cluster_inner(genesis_hash, iuoc))
+    }
+
+    fn boot_cluster_inner(genesis_hash: [u8; 32], iuoc: IuocRegistry) -> Self {
       let ledger = EntropyLedger::new();
       let rww = RwwBus::new();
       let pmr = Ruleset::pmr_prime();
@@ -270,6 +283,26 @@ pub mod aum {
         .map(|p| p.summary.clone())
         .collect();
       rank_offers(quality, inc, &seen)
+    }
+
+    pub fn archive_stats(&self) -> Option<crate::persist::ArchiveStats> {
+      self.iuoc.archive_stats()
+    }
+
+    pub fn resume_soul(
+      &mut self,
+      iuoc: IuocId,
+      frame_idx: usize,
+      pos: Vec3,
+    ) -> Result<FwauId, String> {
+      let soul = self.iuoc.get(iuoc).ok_or("IUOC not found in archive")?;
+      if soul.bound_fwau.is_some() {
+        return Err("IUOC already bound to a live FWAU".into());
+      }
+      if frame_idx >= self.frames.len() {
+        return Err("frame index out of range".into());
+      }
+      self.bind_player(frame_idx, iuoc, pos)
     }
 
     pub fn unbind_death(&mut self, fwau: FwauId, frame_idx: usize) -> Option<crate::iuoc::ExperiencePacket> {

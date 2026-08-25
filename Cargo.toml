@@ -17,3 +17,4 @@ rand = "0.8"
 rand_pcg = "0.3"
 blake3 = "1"
 ulid = "1"
+rusqlite = { version = "0.32", features = ["bundled"] }

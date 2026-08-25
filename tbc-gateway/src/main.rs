@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tbc_engine::aum::AumCore;
 use tbc_engine::intent::{Intent, Verb};
+use tbc_engine::persist::SoulArchive;
 use tbc_engine::transport::{
   drain_reliable, decode_move_datagram, encode_reliable, WireMessage,
 };
@@ -36,7 +37,9 @@ async fn main() {
     .init();
 
   let genesis = *blake3::hash(b"TBC-GENESIS-QUIC").as_bytes();
-  let aum = AumCore::boot_full(genesis);
+  let archive_path = std::env::var("TBC_ARCHIVE_PATH").unwrap_or_else(|_| "data/tbc-archive.db".into());
+  let archive = SoulArchive::open(&archive_path).expect("open soul archive");
+  let aum = AumCore::boot_cluster_with_archive(genesis, archive).expect("boot cluster");
   let state = Arc::new(GatewayState {
     aum: Mutex::new(aum),
     sessions: Mutex::new(HashMap::new()),
