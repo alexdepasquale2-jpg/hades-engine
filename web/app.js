@@ -247,6 +247,39 @@ function flash(elId, text) {
   setTimeout(() => el.classList.add("hidden"), 800);
 }
 
+function updateRww(status, events) {
+  if (status) {
+    document.getElementById("rww-backend").textContent = status.backend;
+    document.getElementById("rww-connected").textContent = status.connected ? "yes" : "no";
+  }
+  if (!events) return;
+  const list = document.getElementById("rww-events");
+  list.innerHTML = "";
+  events.forEach((m) => {
+    const li = document.createElement("li");
+    let text = `${m.subject} tick=${m.at_tick}`;
+    try {
+      const bytes = Array.isArray(m.payload) ? m.payload : [];
+      const body = JSON.parse(new TextDecoder().decode(new Uint8Array(bytes)));
+      if (body.event === "Handoff") {
+        text = `Handoff ${body.from} → ${body.to}`;
+      } else if (body.event) {
+        text = `${body.event} · ${body.frame || ""}`;
+      }
+    } catch (_) {}
+    li.textContent = text;
+    list.appendChild(li);
+  });
+}
+
+async function pollRww() {
+  try {
+    const res = await fetch("/api/rww?subject=rww.handoff&limit=5");
+    const data = await res.json();
+    updateRww(data.status, data.messages);
+  } catch (_) {}
+}
+
 function updateProfiler(prof) {
   if (!prof) return;
   document.getElementById("island-count").textContent = prof.island_count;
@@ -307,10 +340,9 @@ async function pollStatus() {
       document.getElementById("archive-souls").textContent = data.archive.souls;
       document.getElementById("archive-packets").textContent = data.archive.packets;
     }
+    updateRww(data.rww, null);
   } catch (_) {}
 }
-
-showResumeButton();
 
 function draw() {
   ctx.fillStyle = isNpmr ? "#0a0814" : "#060a10";
@@ -388,5 +420,7 @@ function draw() {
 }
 
 setInterval(pollStatus, 1000);
+setInterval(pollRww, 2000);
 setInterval(updateMoveVec, 50);
+showResumeButton();
 draw();

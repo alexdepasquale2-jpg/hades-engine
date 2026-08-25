@@ -4,20 +4,22 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M7 vertical slice** of the spec:
+**M1–M9 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
 | `DeltaTClock` | §5 Δt | Fixed 50 ms timestep, accumulator, max 4 catch-up |
 | `EntropyLedger` | §8 | Private S scalar, delayed noisy consequences |
 | `IUOC` / `FWAU` | §3 | Soul bind, quality snapshot, experience packets |
+| `SoulArchive` | §3 M9 | SQLite persistence for souls + experience packets |
 | `HierGrid` | §4 | 32/128/512 m spatial hash, interest queries |
 | `ProbabilitySurface` | §7 | Beam B=16, D=8, A=6 intent-biased prune |
 | `IslandManager` | §7 M6 | ~40 islands, observe-collapse, step profiler |
+| `GuardrailState` | M8 | Rate limits, beam budget throttle, stall telemetry |
 | `NetcodeState` | §7 | Snapshot ring N=8, rewind-replay, corrections |
 | `ShardBounds` | §10 M7 | PMR shard-00 / shard-01, overlap strip handoff |
 | `Reincarnation planner` | §11 M7 | K=5 ranked offers, accept + rebirth |
-| `RwwBus` | §9 | In-memory RWW fabric (NATS-ready subjects) |
+| `RwwBus` | §9 M10 | In-memory + NATS JetStream (`TBC_RWW` stream) |
 | `transport` | §10 | Framed JSON reliable + 36-byte move datagrams |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
 | Debug server | §10 | HTTP + WebSocket on port **6014** |
@@ -31,13 +33,24 @@ cargo run -p tbc-server --release
 
 Open **http://127.0.0.1:6014**
 
-1. **Partition FWAU** — bind an IUOC avatar on PMR shard-00 (west)
-2. **WASD** — move; walk **east (→)** past the yellow seam at x=0 to trigger seamless shard handoff to shard-01
-3. **Island profiler** — sidebar shows island count and beam step budget (M6)
-4. **Unbind / death** — between-lives flow; pick one of five reincarnation offers (M7)
-5. **Enter NPMR-Academy** — frame handoff via RWW (ruleset change, not spatial shard)
-6. **B** — blink in NPMR (loose ruleset)
-7. **FutureSelf / PastOwn** — psi queries against beam and packet archive
+Default soul archive: `data/tbc-archive.db` (override with `TBC_ARCHIVE_PATH`).
+
+Optional NATS JetStream RWW:
+
+```bash
+docker run --rm -p 4222:4222 nats:2.10 -js
+export TBC_NATS_URL=nats://127.0.0.1:4222
+cargo run -p tbc-server --release
+```
+
+Without `TBC_NATS_URL`, RWW stays in-memory (dev mode).
+
+1. **Partition FWAU** — bind a new IUOC avatar on PMR shard-00 (west)
+2. **Resume soul** — after restart, resume the same IUOC from the archive (stored in browser localStorage)
+3. **WASD** — move; walk **east (→)** past the yellow seam at x=0 for shard handoff
+4. **Unbind / death** — experience packets persist; reincarnation offers use archived history
+5. **Enter NPMR-Academy** — frame handoff via RWW
+6. **B** — blink in NPMR · **FutureSelf / PastOwn** — psi queries
 
 ### QUIC gateway (transport layer)
 
@@ -45,10 +58,7 @@ Open **http://127.0.0.1:6014**
 cargo run -p tbc-gateway --release
 ```
 
-Listens on **quic://127.0.0.1:4433** with a self-signed cert.
-
-- **Reliable bi-stream**: length-prefixed JSON (`login`, `move`, `snapshot`)
-- **Unreliable datagrams**: 36-byte move packets (`encode_move_datagram`)
+Listens on **quic://127.0.0.1:4433** with a self-signed cert. Shares the same `TBC_ARCHIVE_PATH` as the HTTP server.
 
 Smoke-test client:
 
@@ -62,34 +72,35 @@ cargo run -p tbc-gateway --release --example quic_client
 cargo test -p tbc-engine
 ```
 
-17 tests cover Δt, ledger, grid, beam budgets, islands profiler, shard overlap, netcode rewind, transport wire format, planner offers, RWW publish, and M8 guardrails.
-
-### M8 scale tests
+24 tests cover core simulation, M8 guardrails, M9 archive hydration, and M10 RWW (memory mode).
 
 ```bash
 cargo test -p tbc-engine scale_guardrails
+cargo test -p tbc-engine persist_hydrate
+# With NATS running:
+cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
-
-Verifies 200-entity budget compliance (≥95% ticks within 35k step budget), intent-flood rate limiting, and unknown-FWAU rejection.
 
 ## Architecture
 
 ```
 AUM_Core
-├── IUOCRegistry      durable souls + experience packets
-├── EntropyLedger     private quality scalar (S)
-├── RwwBus            in-memory RWW (rww.bound.*, rww.handoff)
+├── SoulArchive (SQLite)   durable IUOC + experience packets (M9)
+├── IUOCRegistry         hydrated from archive on boot
+├── EntropyLedger        private quality scalar (S)
+├── RwwBus               memory cache + NATS JetStream replication (M10)
 ├── Frame PMR shard-00   Δt=50ms, x ∈ [-500, 50]
 ├── Frame PMR shard-01   Δt=50ms, x ∈ [-50, 500]
-│   ├── IslandManager   clustering, observe-collapse, profiler
-│   ├── NetcodeState    snapshot ring, rewind-replay
-│   └── HierGrid        render-on-observation
+│   ├── IslandManager    clustering, observe-collapse, profiler
+│   ├── GuardrailState   rate limits + budget enforcement
+│   ├── NetcodeState     snapshot ring, rewind-replay
+│   └── HierGrid         render-on-observation
 ├── Frame NPMR-Academy   Δt=200ms, blink, loose ruleset
 └── Reincarnation planner  K=5 ranked packet templates
 
 Transport
-├── tbc-server          HTTP/WebSocket (debug UI)
-└── tbc-gateway         QUIC (quinn) reliable + datagram moves
+├── tbc-server           HTTP/WebSocket (debug UI)
+└── tbc-gateway          QUIC (quinn) reliable + datagram moves
 ```
 
 ## Milestones
@@ -104,6 +115,11 @@ Transport
 | M6 Island beam profiler | Done |
 | M7 Seamless multi-shard PMR + reincarnation | Done |
 | M8 Guardrails + scale test | Done |
+| M9 Persistent IUOC + experience archive | Done |
+| M10 Real RWW (NATS JetStream) | Done |
+| M11 Multi-node PMR sharding | Planned |
+| M12 Production transport + ops | Planned |
+| M13 Gameplay depth (ruleset-driven) | Planned |
 
 ## Rulesets
 

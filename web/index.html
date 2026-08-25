@@ -10,7 +10,7 @@
   <div class="app">
     <header>
       <h1>The Big Computer</h1>
-      <p class="subtitle">TBC Engine · M9 persistent souls</p>
+      <p class="subtitle">TBC Engine · M10 NATS RWW</p>
     </header>
 
     <aside class="panel">
@@ -37,6 +37,14 @@
         <div class="stat"><span>Δt</span><strong id="dt">50 ms</strong></div>
         <div id="correction-flash" class="correction hidden">Correction applied</div>
         <div id="reject-flash" class="reject hidden"></div>
+      </section>
+
+      <section>
+        <h2>RWW fabric (M10)</h2>
+        <div class="stat"><span>Backend</span><strong id="rww-backend">memory</strong></div>
+        <div class="stat"><span>Connected</span><strong id="rww-connected">no</strong></div>
+        <ul id="rww-events" class="odds-list"></ul>
+        <p class="hint">NATS JetStream when TBC_NATS_URL is set · handoff events</p>
       </section>
 
       <section>

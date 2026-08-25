@@ -14,5 +14,9 @@ rand_pcg.workspace = true
 blake3.workspace = true
 ulid.workspace = true
 rusqlite.workspace = true
+async-nats = "0.38"
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+futures-util = "0.3"
+tracing.workspace = true
 
 [dev-dependencies]

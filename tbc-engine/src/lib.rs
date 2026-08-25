@@ -70,7 +70,7 @@ pub mod aum {
 
     fn boot_cluster_inner(genesis_hash: [u8; 32], iuoc: IuocRegistry) -> Self {
       let ledger = EntropyLedger::new();
-      let rww = RwwBus::new();
+      let rww = RwwBus::open_from_env();
       let pmr = Ruleset::pmr_prime();
       let npmr = Ruleset::npmr_academy();
 
@@ -112,7 +112,7 @@ pub mod aum {
     fn boot_with_frames(genesis_hash: [u8; 32], rulesets: Vec<Ruleset>) -> Self {
       let iuoc = IuocRegistry::new();
       let ledger = EntropyLedger::new();
-      let rww = RwwBus::new();
+      let rww = RwwBus::open_from_env();
       let frames = rulesets
         .into_iter()
         .enumerate()

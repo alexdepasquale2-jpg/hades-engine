@@ -40,6 +40,11 @@ async fn main() {
   let archive_path = std::env::var("TBC_ARCHIVE_PATH").unwrap_or_else(|_| "data/tbc-archive.db".into());
   let archive = SoulArchive::open(&archive_path).expect("open soul archive");
   let aum = AumCore::boot_cluster_with_archive(genesis, archive).expect("boot cluster");
+  info!(
+    "RWW backend={} connected={}",
+    aum.rww.status().backend,
+    aum.rww.status().connected
+  );
   let state = Arc::new(GatewayState {
     aum: Mutex::new(aum),
     sessions: Mutex::new(HashMap::new()),

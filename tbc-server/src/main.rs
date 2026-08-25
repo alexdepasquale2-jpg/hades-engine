@@ -48,6 +48,7 @@ struct StatusResponse {
   island_profiler: Option<tbc_engine::islands::IslandProfiler>,
   guardrails: Option<tbc_engine::guardrails::GuardrailReport>,
   archive: Option<tbc_engine::persist::ArchiveStats>,
+  rww: tbc_engine::rww::RwwStatus,
 }
 
 #[derive(Serialize)]
@@ -126,6 +127,11 @@ async fn main() {
   let archive = SoulArchive::open(&archive_path).expect("open soul archive");
   info!("Soul archive at {} ({} souls)", archive.path(), archive.stats().map(|s| s.souls).unwrap_or(0));
   let aum = AumCore::boot_cluster_with_archive(genesis, archive).expect("boot cluster");
+  info!(
+    "RWW backend={} connected={}",
+    aum.rww.status().backend,
+    aum.rww.status().connected
+  );
 
   let state = Arc::new(AppState {
     aum: Mutex::new(aum),
@@ -151,6 +157,7 @@ async fn main() {
     .route("/api/offers", get(offers))
     .route("/api/unbind", axum::routing::post(unbind))
     .route("/api/reincarnate", axum::routing::post(reincarnate))
+    .route("/api/rww", get(rww_recent))
     .route("/ws", get(ws_handler))
     .nest_service("/static", ServeDir::new("web"))
     .layer(CorsLayer::permissive())
@@ -195,6 +202,7 @@ async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
     island_profiler: frame.island_profiler.clone(),
     guardrails: frame.guardrails.clone(),
     archive: guard.archive_stats(),
+    rww: guard.rww.status(),
   })
 }
 
@@ -514,6 +522,27 @@ async fn reincarnate(
       message: e,
     }),
   }
+}
+
+#[derive(Deserialize)]
+struct RwwQuery {
+  subject: Option<String>,
+  limit: Option<usize>,
+}
+
+async fn rww_recent(
+  State(state): State<Arc<AppState>>,
+  Query(q): Query<RwwQuery>,
+) -> Json<serde_json::Value> {
+  let guard = state.aum.lock().await;
+  let subject = q.subject.as_deref().unwrap_or("rww.handoff");
+  let limit = q.limit.unwrap_or(10);
+  let msgs = guard.rww.recent(subject, limit);
+  Json(serde_json::json!({
+    "status": guard.rww.status(),
+    "subject": subject,
+    "messages": msgs,
+  }))
 }
 
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<AppState>>) -> impl IntoResponse {
