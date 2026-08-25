@@ -175,6 +175,9 @@ async fn main() {
     .route("/api/offers", get(offers))
     .route("/api/unbind", axum::routing::post(unbind))
     .route("/api/reincarnate", axum::routing::post(reincarnate))
+    .route("/api/attack", axum::routing::post(attack))
+    .route("/api/interact", axum::routing::post(interact))
+    .route("/api/ruleset", get(ruleset_info))
     .route("/api/rww", get(rww_recent))
     .route("/health", get(health))
     .route("/ready", get(ready))
@@ -312,6 +315,72 @@ async fn login(State(state): State<Arc<AppState>>) -> Json<LoginResponse> {
     frame: frame_name,
     message: "IUOC partitioned. FWAU bound. Something settled.".to_string(),
   })
+}
+
+#[derive(Deserialize)]
+struct AttackRequest {
+  fwau: u128,
+  target_entity: Option<u32>,
+}
+
+#[derive(Deserialize)]
+struct InteractRequest {
+  fwau: u128,
+}
+
+async fn attack(
+  State(state): State<Arc<AppState>>,
+  Json(req): Json<AttackRequest>,
+) -> Json<tbc_engine::gameplay::AttackResult> {
+  let fwau = FwauId(req.fwau);
+  let frame_idx = state
+    .sessions
+    .lock()
+    .await
+    .get(&fwau)
+    .map(|s| s.frame_idx)
+    .unwrap_or(0);
+  let target = req.target_entity.map(|idx| tbc_engine::types::Entity {
+    index: idx,
+    generation: 0,
+  });
+  let mut guard = state.aum.lock().await;
+  let result = guard.attack(frame_idx, fwau, target);
+  if result.killed {
+    let deaths = guard.process_player_deaths(frame_idx);
+    if deaths.contains(&fwau) {
+      state.sessions.lock().await.remove(&fwau);
+    }
+  }
+  Json(result)
+}
+
+async fn interact(
+  State(state): State<Arc<AppState>>,
+  Json(req): Json<InteractRequest>,
+) -> Json<tbc_engine::gameplay::InteractResult> {
+  let fwau = FwauId(req.fwau);
+  let frame_idx = state
+    .sessions
+    .lock()
+    .await
+    .get(&fwau)
+    .map(|s| s.frame_idx)
+    .unwrap_or(0);
+  let mut guard = state.aum.lock().await;
+  Json(guard.interact(frame_idx, fwau))
+}
+
+async fn ruleset_info(State(state): State<Arc<AppState>>) -> Json<serde_json::Value> {
+  let guard = state.aum.lock().await;
+  let ruleset = &guard.frames[0].spec.ruleset;
+  Json(serde_json::json!({
+    "id": ruleset.id,
+    "title": ruleset.title,
+    "verbs": ruleset.verbs,
+    "conservation": ruleset.conservation,
+    "death": ruleset.death,
+  }))
 }
 
 #[derive(Deserialize)]
@@ -713,6 +782,15 @@ async fn sim_loop(state: Arc<AppState>) {
       let steps = guard.frames[i].drain_elapsed(dt);
       if steps > 0 {
         guard.run_frame_ticks(i, steps);
+        let deaths = guard.process_player_deaths(i);
+        drop(guard);
+        if !deaths.is_empty() {
+          let mut sessions = state.sessions.lock().await;
+          for fwau in deaths {
+            sessions.remove(&fwau);
+          }
+        }
+        guard = state.aum.lock().await;
       }
     }
     let inbound = guard.process_inbound_shard_crosses();

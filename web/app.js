@@ -41,6 +41,8 @@ document.getElementById("btn-past").addEventListener("click", () => queryPsi("Pa
 document.getElementById("btn-npmr").addEventListener("click", () => handoff("npmr.academy.v1"));
 document.getElementById("btn-pmr").addEventListener("click", () => handoff("pmr.v1"));
 document.getElementById("btn-unbind").addEventListener("click", unbindDeath);
+document.getElementById("btn-attack").addEventListener("click", () => attackNearest());
+document.getElementById("btn-interact").addEventListener("click", () => interactNearest());
 
 window.addEventListener("keydown", (e) => {
   keys[e.code] = true;
@@ -49,6 +51,14 @@ window.addEventListener("keydown", (e) => {
     queryPsi("FutureSelf");
   }
   if (e.code === "KeyB" && isNpmr) blinkTowardCursor();
+  if (e.code === "KeyF") {
+    e.preventDefault();
+    attackNearest();
+  }
+  if (e.code === "KeyE") {
+    e.preventDefault();
+    interactNearest();
+  }
   updateMoveVec();
 });
 
@@ -225,6 +235,74 @@ async function unbindDeath() {
   showOffers(data.offers);
 }
 
+async function attackNearest() {
+  if (!session.fwau) return;
+  const res = await fetch("/api/attack", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau }),
+  });
+  const data = await res.json();
+  if (data.hit) {
+    flash("correction-flash", data.message);
+    if (!data.killed) {
+      document.getElementById("player-stamina").textContent = Math.round(data.player_stamina);
+    }
+  } else {
+    flash("reject-flash", data.message);
+  }
+  if (data.killed && data.target_entity != null) {
+  }
+  const snapRes = await fetch("/api/move", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau, dx: 0, dy: 0 }),
+  });
+  if (snapRes.ok) onSnapshot(await snapRes.json());
+}
+
+async function interactNearest() {
+  if (!session.fwau) return;
+  const res = await fetch("/api/interact", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau }),
+  });
+  const data = await res.json();
+  if (data.hit) {
+    flash("correction-flash", data.message);
+    updateInventory(data.inventory);
+  } else {
+    flash("reject-flash", data.message);
+  }
+}
+
+function updateInventory(items) {
+  const list = document.getElementById("inventory-list");
+  list.innerHTML = "";
+  if (!items || items.length === 0) return;
+  items.forEach((item) => {
+    const li = document.createElement("li");
+    li.textContent = item;
+    list.appendChild(li);
+  });
+}
+
+function updatePlayerStats(snap) {
+  const player = (snap.entities || []).find((e) => e.is_player);
+  if (!player) {
+    document.getElementById("player-hp").textContent = "—";
+    document.getElementById("player-stamina").textContent = "—";
+    updateInventory([]);
+    return;
+  }
+  document.getElementById("player-hp").textContent =
+    player.hp != null ? Math.round(player.hp) : "—";
+  document.getElementById("player-stamina").textContent =
+    player.stamina != null ? Math.round(player.stamina) : "—";
+  updateInventory(player.inventory || []);
+}
+
 async function acceptOffer(templateId) {
   if (!session.iuoc) return;
   const res = await fetch("/api/reincarnate", {
@@ -341,6 +419,7 @@ function onSnapshot(snap) {
     shardId != null ? `shard-${shardId}` : (isNpmr ? "NPMR" : "—");
   updateProfiler(snap.island_profiler);
   updateGuardrails(snap.guardrails);
+  updatePlayerStats(snap);
   draw();
 }
 

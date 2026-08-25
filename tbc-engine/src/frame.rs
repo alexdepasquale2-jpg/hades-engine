@@ -32,6 +32,8 @@ pub struct EntitySnapshot {
   pub y: f32,
   pub z: f32,
   pub hp: Option<f32>,
+  pub stamina: Option<f32>,
+  pub inventory: Option<Vec<String>>,
   pub is_player: bool,
   pub is_ai: bool,
   pub awake: bool,
@@ -107,6 +109,7 @@ pub struct Frame {
   pub netcode: NetcodeState,
   pub shard_bounds: Option<ShardBounds>,
   pub pending_shard_handoffs: Vec<(FwauId, u32)>,
+  pub pending_kills: Vec<(Entity, FwauId)>,
   pub rng_seed: u64,
   pub guardrails: GuardrailState,
   sleep_delay_ticks: u64,
@@ -134,6 +137,7 @@ impl Frame {
       netcode: NetcodeState::new(),
       shard_bounds,
       pending_shard_handoffs: Vec::new(),
+      pending_kills: Vec::new(),
       rng_seed,
       guardrails: GuardrailState::new(guard_config),
       sleep_delay_ticks,
@@ -414,22 +418,7 @@ impl Frame {
     self.integrate_physics(false);
     self.update_sleep_states();
     self.step_islands_and_observe();
-
-    for intent in &all_intents {
-      if intent.verb == Verb::Attack {
-        if let Some(iuoc) = self.iuoc_for_fwau(intent.fwau) {
-          let action = ResolvedAction {
-            id: intent.seq as u128,
-            aid: 0.0,
-            harm: 0.5,
-            ego: 0.0,
-            coerce: 0.0,
-            perf: 0.0,
-          };
-          ledger.enqueue_consequence(iuoc, &action, Tick(tick.0 + 600));
-        }
-      }
-    }
+    self.regen_stamina();
 
     ledger.flush_due(tick);
     self.check_shard_boundaries();
@@ -564,6 +553,12 @@ impl Frame {
           y: rec.transform.position.y,
           z: rec.transform.position.z,
           hp: rec.avatar.as_ref().map(|a| a.hp),
+          stamina: rec.avatar.as_ref().map(|a| a.stamina),
+          inventory: if rec.fwau_binding.is_some() {
+            rec.avatar.as_ref().map(|a| a.inventory.clone())
+          } else {
+            None
+          },
           is_player: rec.fwau_binding.is_some(),
           is_ai: rec.brain.is_some(),
           awake: rec.sleep.awake,
@@ -616,6 +611,12 @@ impl Frame {
             y: rec.transform.position.y,
             z: rec.transform.position.z,
             hp: rec.avatar.as_ref().map(|a| a.hp),
+            stamina: rec.avatar.as_ref().map(|a| a.stamina),
+            inventory: if rec.fwau_binding.is_some() {
+              rec.avatar.as_ref().map(|a| a.inventory.clone())
+            } else {
+              None
+            },
             is_player: rec.fwau_binding.is_some(),
             is_ai: rec.brain.is_some(),
             awake: rec.sleep.awake,

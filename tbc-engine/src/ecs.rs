@@ -53,6 +53,7 @@ pub struct AvatarState {
   pub hp: f32,
   pub stamina: f32,
   pub dead: bool,
+  pub inventory: Vec<String>,
 }
 
 #[derive(Clone, Debug)]
@@ -168,6 +169,12 @@ impl World {
         kind: BrainKind::Utility,
         seed,
       });
+      rec.avatar = Some(AvatarState {
+        hp: 100.0,
+        stamina: 0.0,
+        dead: false,
+        inventory: Vec::new(),
+      });
       rec.sleep.awake = true;
     }
     e
@@ -183,6 +190,7 @@ impl World {
         hp: 100.0,
         stamina: 100.0,
         dead: false,
+        inventory: Vec::new(),
       });
       rec.sleep.awake = true;
       rec.dirty = true;

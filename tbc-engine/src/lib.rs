@@ -7,6 +7,7 @@ pub mod beam;
 pub mod clock;
 pub mod ecs;
 pub mod frame;
+pub mod gameplay;
 pub mod guardrails;
 pub mod grid;
 pub mod islands;
@@ -28,7 +29,7 @@ pub mod aum {
     use crate::iuoc::IuocRegistry;
     use crate::ledger::EntropyLedger;
     use crate::planner::{rank_offers, ReincarnationOffer};
-    use crate::ruleset::Ruleset;
+    use crate::ruleset::{Ruleset, RulesetRegistry};
     use crate::rww::RwwBus;
     use crate::shard::{ShardBounds, ShardCrossEvent, ShardNodeConfig, ShardNodeStatus};
     use crate::types::{FrameId, FwauId, IuocId, QualityScalar, Tick, Vec3};
@@ -94,7 +95,11 @@ pub mod aum {
 
     fn frame_for_shard(genesis_hash: [u8; 32], shard_id: u32) -> Frame {
       let bounds = ShardBounds::for_id(shard_id).unwrap_or_else(ShardBounds::shard_00);
-      let pmr = Ruleset::pmr_prime();
+      let reg = RulesetRegistry::boot_defaults();
+      let pmr = reg
+        .get("pmr.v1")
+        .cloned()
+        .unwrap_or_else(Ruleset::pmr_prime);
       Frame::new_with_shard(
         FrameSpec {
           id: FrameId(shard_id + 1),
@@ -107,8 +112,15 @@ pub mod aum {
     }
 
     fn cluster_frames(genesis_hash: [u8; 32]) -> Vec<Frame> {
-      let pmr = Ruleset::pmr_prime();
-      let npmr = Ruleset::npmr_academy();
+      let reg = RulesetRegistry::boot_defaults();
+      let pmr = reg
+        .get("pmr.v1")
+        .cloned()
+        .unwrap_or_else(Ruleset::pmr_prime);
+      let npmr = reg
+        .get("npmr.academy.v1")
+        .cloned()
+        .unwrap_or_else(Ruleset::npmr_academy);
       vec![
         Frame::new_with_shard(
           FrameSpec {
@@ -499,8 +511,40 @@ pub mod aum {
     pub fn run_all_frames(&mut self, steps: u32) {
       for i in 0..self.frames.len() {
         self.run_frame_ticks(i, steps);
+        self.process_player_deaths(i);
       }
       self.process_shard_handoffs();
+    }
+
+    pub fn attack(
+      &mut self,
+      frame_idx: usize,
+      fwau: FwauId,
+      target: Option<crate::types::Entity>,
+    ) -> crate::gameplay::AttackResult {
+      self.frames[frame_idx].try_attack(fwau, target, &mut self.ledger)
+    }
+
+    pub fn interact(
+      &mut self,
+      frame_idx: usize,
+      fwau: FwauId,
+    ) -> crate::gameplay::InteractResult {
+      self.frames[frame_idx].try_interact(fwau, &mut self.ledger)
+    }
+
+    /// Auto-unbind FWAUs when ruleset death policy allows (M13).
+    pub fn process_player_deaths(&mut self, frame_idx: usize) -> Vec<FwauId> {
+      let unbind = self.frames[frame_idx].spec.ruleset.death.unbind;
+      let deaths = self.frames[frame_idx].process_pending_kills();
+      let mut unbound = Vec::new();
+      for (fwau, iuoc) in deaths {
+        if iuoc.is_some() && unbind {
+          self.unbind_death(fwau, frame_idx);
+          unbound.push(fwau);
+        }
+      }
+      unbound
     }
   }
 }

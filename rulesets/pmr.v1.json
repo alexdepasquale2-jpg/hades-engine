@@ -15,5 +15,19 @@
   "death": { "unbind": true, "park_s": 0, "rewind_s": 0 },
   "psi": { "enabled": true, "base_cost": 0.04, "scopes": ["PastOwn", "FutureSelf"] },
   "sleep": { "delay_s": 2.0, "kinematic_wake": true },
-  "handoff": { "allowed_targets": ["npmr.academy.v1"] }
+  "handoff": { "allowed_targets": ["npmr.academy.v1"] },
+  "verbs": {
+    "attack": {
+      "enabled": true,
+      "damage": 34,
+      "range_m": 8,
+      "stamina_cost": 12,
+      "harm_entropy": 0.5
+    },
+    "interact": {
+      "enabled": true,
+      "range_m": 4,
+      "item_prefix": "echo"
+    }
+  }
 }

@@ -14,6 +14,8 @@ pub struct Ruleset {
   pub sleep: SleepPolicy,
   pub handoff: HandoffPolicy,
   pub crdt: Option<CrdtPolicy>,
+  #[serde(default)]
+  pub verbs: VerbPolicies,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -70,6 +72,124 @@ pub struct CrdtPolicy {
   pub presence: Option<String>,
 }
 
+/// M13 — ruleset-driven verb policies loaded from JSON.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct VerbPolicies {
+  pub attack: AttackPolicy,
+  pub interact: InteractPolicy,
+}
+
+impl Default for VerbPolicies {
+  fn default() -> Self {
+    Self {
+      attack: AttackPolicy::default(),
+      interact: InteractPolicy::default(),
+    }
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct AttackPolicy {
+  pub enabled: bool,
+  pub damage: f32,
+  pub range_m: f32,
+  pub stamina_cost: f32,
+  pub harm_entropy: f32,
+}
+
+impl Default for AttackPolicy {
+  fn default() -> Self {
+    Self {
+      enabled: true,
+      damage: 34.0,
+      range_m: 8.0,
+      stamina_cost: 12.0,
+      harm_entropy: 0.5,
+    }
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct InteractPolicy {
+  pub enabled: bool,
+  pub range_m: f32,
+  pub item_prefix: String,
+}
+
+impl Default for InteractPolicy {
+  fn default() -> Self {
+    Self {
+      enabled: true,
+      range_m: 4.0,
+      item_prefix: "echo".into(),
+    }
+  }
+}
+
+pub struct RulesetRegistry {
+  rulesets: std::collections::HashMap<String, Ruleset>,
+}
+
+impl RulesetRegistry {
+  pub fn empty() -> Self {
+    Self {
+      rulesets: std::collections::HashMap::new(),
+    }
+  }
+
+  pub fn insert(&mut self, ruleset: Ruleset) {
+    self.rulesets.insert(ruleset.id.clone(), ruleset);
+  }
+
+  pub fn get(&self, id: &str) -> Option<&Ruleset> {
+    self.rulesets.get(id)
+  }
+
+  pub fn load_dir(path: &std::path::Path) -> Result<Self, RulesetLoadError> {
+    let mut reg = Self::empty();
+    if !path.is_dir() {
+      return Err(RulesetLoadError::NotFound(path.display().to_string()));
+    }
+    for entry in std::fs::read_dir(path).map_err(RulesetLoadError::Io)? {
+      let entry = entry.map_err(RulesetLoadError::Io)?;
+      let p = entry.path();
+      if p.extension().and_then(|e| e.to_str()) != Some("json") {
+        continue;
+      }
+      let text = std::fs::read_to_string(&p).map_err(RulesetLoadError::Io)?;
+      let ruleset = Ruleset::from_json(&text).map_err(|e| RulesetLoadError::Json(p.display().to_string(), e))?;
+      reg.insert(ruleset);
+    }
+    if reg.rulesets.is_empty() {
+      return Err(RulesetLoadError::NotFound(path.display().to_string()));
+    }
+    Ok(reg)
+  }
+
+  pub fn boot_defaults() -> Self {
+    let path = std::env::var("TBC_RULESETS_PATH").unwrap_or_else(|_| {
+      format!("{}/../rulesets", env!("CARGO_MANIFEST_DIR"))
+    });
+    Self::load_dir(std::path::Path::new(&path)).unwrap_or_else(|e| {
+      tracing::warn!("ruleset dir load failed ({}); using embedded defaults", e);
+      let mut reg = Self::empty();
+      reg.insert(Ruleset::pmr_prime());
+      reg.insert(Ruleset::npmr_academy());
+      reg
+    })
+  }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RulesetLoadError {
+  #[error("io: {0}")]
+  Io(std::io::Error),
+  #[error("ruleset dir not found or empty: {0}")]
+  NotFound(String),
+  #[error("json {0}: {1}")]
+  Json(String, serde_json::Error),
+}
+
 impl Ruleset {
   pub fn pmr_prime() -> Self {
     Self {
@@ -112,6 +232,20 @@ impl Ruleset {
         allowed_targets: vec!["npmr.academy.v1".into()],
       },
       crdt: None,
+      verbs: VerbPolicies {
+        attack: AttackPolicy {
+          enabled: true,
+          damage: 34.0,
+          range_m: 8.0,
+          stamina_cost: 12.0,
+          harm_entropy: 0.5,
+        },
+        interact: InteractPolicy {
+          enabled: true,
+          range_m: 4.0,
+          item_prefix: "echo".into(),
+        },
+      },
     }
   }
 
@@ -164,6 +298,20 @@ impl Ruleset {
         props: "or-set".into(),
         presence: Some("lww-register".into()),
       }),
+      verbs: VerbPolicies {
+        attack: AttackPolicy {
+          enabled: false,
+          damage: 5.0,
+          range_m: 6.0,
+          stamina_cost: 5.0,
+          harm_entropy: 0.1,
+        },
+        interact: InteractPolicy {
+          enabled: true,
+          range_m: 6.0,
+          item_prefix: "thought".into(),
+        },
+      },
     }
   }
 

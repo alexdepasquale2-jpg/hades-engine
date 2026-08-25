@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M12 vertical slice** of the spec:
+**M1–M13 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -21,7 +21,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `Reincarnation planner` | §11 M7 | K=5 ranked offers, accept + rebirth |
 | `RwwBus` | §9 M10 | In-memory + NATS JetStream (`TBC_RWW` stream) |
 | `transport` | §10 | Framed JSON reliable + 36-byte move datagrams |
-| `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
+| `VerbPolicies` | M13 | Attack/interact from ruleset JSON, conservation inventory |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
 | Debug server | §10 | HTTP + WebSocket — cluster **6014**, shard-00 **6020**, shard-01 **6021** |
 | QUIC gateway | §10 M12 | TLS/mTLS QUIC **4433**, ops HTTP **9443** |
@@ -68,7 +68,7 @@ Default cluster mode (no `TBC_SHARD_ID`) keeps in-process handoff on port **6014
 3. **WASD** — move; walk **east (→)** past the yellow seam at x=0 for shard handoff
 4. **Unbind / death** — experience packets persist; reincarnation offers use archived history
 5. **Enter NPMR-Academy** — frame handoff via RWW
-6. **B** — blink in NPMR · **FutureSelf / PastOwn** — psi queries
+6. **B** — blink in NPMR · **F** strike · **E** interact (ruleset verbs) · **FutureSelf / PastOwn** — psi queries
 
 ### QUIC gateway (M12 production transport)
 
@@ -121,13 +121,14 @@ docker compose up --build
 cargo test -p tbc-engine
 ```
 
-29 tests cover core simulation, M8–M12 (guardrails, archive, RWW, shards, ops).
+33 tests cover core simulation, M8–M13 (guardrails, archive, RWW, shards, ops, gameplay).
 
 ```bash
 cargo test -p tbc-engine scale_guardrails
 cargo test -p tbc-engine persist_hydrate
 cargo test -p tbc-engine shard_multinode
 cargo test -p tbc-engine ops_health
+cargo test -p tbc-engine gameplay_ruleset
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
@@ -170,7 +171,7 @@ Transport
 | M10 Real RWW (NATS JetStream) | Done |
 | M11 Multi-node PMR sharding | Done |
 | M12 Production transport + ops | Done |
-| M13 Gameplay depth (ruleset-driven) | Planned |
+| M13 Gameplay depth (ruleset-driven) | Done |
 
 ## Rulesets
 
