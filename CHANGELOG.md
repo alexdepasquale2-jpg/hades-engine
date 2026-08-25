@@ -32,4 +32,4 @@ Tag `v0.1.0` on `main` triggers the release workflow when `CARGO_REGISTRY_TOKEN`
 
 - **M20** — `Verb::Assist` and `Verb::Speak` processed through netcode intent queue, tick stepping, and rewind-replay (HTTP/QUIC still return synchronous outcomes via flush).
 
-[0.1.0]: https://github.com/unfaithful/hades-engine/releases/tag/v0.1.0
+[0.1.0]: https://github.com/alexdepasquale2-jpg/hades-engine/releases/tag/v0.1.0
