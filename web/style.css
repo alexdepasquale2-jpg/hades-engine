@@ -154,7 +154,20 @@ main {
 
 .dot.player { background: var(--player); }
 .dot.ai.awake { background: var(--ai); }
-.dot.ai.asleep { background: var(--sleep); }
+.dot.npmr { background: #c084fc; }
+
+.correction, .reject {
+  margin-top: 0.5rem;
+  padding: 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+}
+
+.correction { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+.reject { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.hidden { display: none; }
+
+button + button { margin-top: 0.35rem; }
 
 @media (max-width: 768px) {
   .app { grid-template-columns: 1fr; }

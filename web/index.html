@@ -10,7 +10,7 @@
   <div class="app">
     <header>
       <h1>The Big Computer</h1>
-      <p class="subtitle">TBC Engine · PMR-Prime · Render-on-observation</p>
+      <p class="subtitle">TBC Engine · M4 netcode · M5 NPMR</p>
     </header>
 
     <aside class="panel">
@@ -18,6 +18,7 @@
         <h2>Session</h2>
         <button id="btn-login" class="primary">Partition FWAU</button>
         <div id="session-info" class="muted">No IUOC bound</div>
+        <div id="frame-info" class="stat"><span>Frame</span><strong id="frame-name">—</strong></div>
       </section>
 
       <section>
@@ -29,20 +30,30 @@
       <section>
         <h2>Simulation</h2>
         <div class="stat"><span>Tick</span><strong id="tick">0</strong></div>
+        <div class="stat"><span>Client tick</span><strong id="client-tick">0</strong></div>
         <div class="stat"><span>Entities</span><strong id="entity-count">0</strong></div>
-        <div class="stat"><span>AI Guys</span><strong id="ai-count">0</strong></div>
         <div class="stat"><span>Δt</span><strong id="dt">50 ms</strong></div>
+        <div id="correction-flash" class="correction hidden">Correction applied</div>
+        <div id="reject-flash" class="reject hidden"></div>
       </section>
 
       <section>
-        <h2>Psi — FutureSelf</h2>
-        <button id="btn-psi">Query probable futures</button>
+        <h2>Frames (handoff)</h2>
+        <button id="btn-npmr">Enter NPMR-Academy</button>
+        <button id="btn-pmr">Return to PMR-Prime</button>
+      </section>
+
+      <section>
+        <h2>Psi</h2>
+        <button id="btn-psi">FutureSelf (odds)</button>
+        <button id="btn-past">PastOwn (recall)</button>
         <ul id="psi-odds" class="odds-list"></ul>
+        <ul id="psi-recall" class="odds-list"></ul>
       </section>
 
       <section>
         <h2>Controls</h2>
-        <p class="hint">WASD or arrow keys to move. Space to query psi.</p>
+        <p class="hint">WASD move · B blink (NPMR) · Space psi · Late intents trigger rewind</p>
       </section>
     </aside>
 
@@ -51,7 +62,7 @@
       <div class="legend">
         <span class="dot player"></span> FWAU avatar
         <span class="dot ai awake"></span> AI Guy (awake)
-        <span class="dot ai asleep"></span> AI Guy (sleeping)
+        <span class="dot npmr"></span> NPMR frame tint
       </div>
     </main>
   </div>

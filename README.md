@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-This is the **M1–M3 vertical slice** of the spec:
+**M1–M5 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -13,17 +13,12 @@ This is the **M1–M3 vertical slice** of the spec:
 | `IUOC` / `FWAU` | §3 | Soul bind, quality snapshot, experience packets |
 | `HierGrid` | §4 | 32/128/512 m spatial hash, interest queries |
 | `ProbabilitySurface` | §7 | Beam B=16, D=8, A=6 intent-biased prune |
-| `Frame` | §4–5 | 20 Hz sim loop, sleep/wake, AI Guys, replication |
-| `Ruleset` | §6 | PMR-Prime + NPMR-Academy data shapes |
-| Debug server | §10 gateway | HTTP + WebSocket on port 6014 |
+| `NetcodeState` | §7 | Snapshot ring N=8, rewind-replay, corrections |
+| `RwwBus` | §9 | In-memory RWW fabric (NATS-ready subjects) |
+| `Frame` PMR + NPMR | §4–6 | Dual frames, handoff, blink, speed validation |
+| Debug server | §10 | HTTP + WebSocket gateway on port 6014 |
 
 ## Quick start
-
-### Requirements
-
-- Rust 1.75+ (`rustup` recommended)
-
-### Run the debug server
 
 ```bash
 cargo run -p tbc-server --release
@@ -31,9 +26,11 @@ cargo run -p tbc-server --release
 
 Open **http://127.0.0.1:6014**
 
-1. Click **Partition FWAU** to create an IUOC and bind an avatar.
-2. Use **WASD** or arrow keys to move (intent verbs on the unreliable path).
-3. Click **Query probable futures** for a FutureSelf psi read from the live beam.
+1. **Partition FWAU** — bind an IUOC avatar in PMR-Prime
+2. **WASD** — move (intents with client tick for rewind testing)
+3. **Enter NPMR-Academy** — frame handoff via RWW
+4. **B** — blink in NPMR (loose ruleset)
+5. **FutureSelf / PastOwn** — psi queries against beam and packet archive
 
 ### Run tests
 
@@ -41,7 +38,7 @@ Open **http://127.0.0.1:6014**
 cargo test -p tbc-engine
 ```
 
-Tests verify Δt accumulator behavior, entropy scoring direction, O(1) grid moves, and beam step budgets from the spec.
+11 tests cover Δt, ledger, grid, beam budgets, netcode rewind, and RWW publish.
 
 ## Architecture
 
@@ -49,23 +46,31 @@ Tests verify Δt accumulator behavior, entropy scoring direction, O(1) grid move
 AUM_Core
 ├── IUOCRegistry      durable souls
 ├── EntropyLedger     private quality scalar (S)
-└── Frame PMR-Prime   Δt=50ms, ruleset=pmr.v1
-    ├── ECS World     avatars + AI Guys
-    ├── HierGrid      render-on-observation interest
-    └── ProbabilitySurface per island
+├── RwwBus            in-memory RWW (rww.bound.*, rww.handoff)
+├── Frame PMR-Prime   Δt=50ms, ruleset=pmr.v1
+│   ├── NetcodeState  snapshot ring, rewind-replay
+│   ├── HierGrid      render-on-observation
+│   └── ProbabilitySurface per island
+└── Frame NPMR-Academy  Δt=200ms, blink, loose ruleset
 ```
+
+## Milestones
+
+| Milestone | Status |
+| --- | --- |
+| M1 Tick + ledger | Done |
+| M2 Soul bind | Done |
+| M3 Observe (grid, sleep/wake) | Done |
+| M4 Netcode (rewind, speed hack) | Done |
+| M5 NPMR + RWW + psi | Done |
+| M6 Island beam profiler | Next |
+| M7 Seamless multi-shard PMR | Planned |
+| M8 Guardrails + scale test | Planned |
 
 ## Rulesets
 
 - `rulesets/pmr.v1.json` — tight PMR-Prime (20 Hz, gravity, conserved items)
 - `rulesets/npmr.academy.v1.json` — loose NPMR (blink, CRDT props)
-
-## Roadmap (from spec §14)
-
-- **M4** — QUIC gateway (quinn), rewind-replay netcode
-- **M5** — NATS RWW bus, NPMR Academy frame
-- **M6** — Full island beam profiler at 40 islands
-- **M7** — Seamless multi-shard PMR, UE5 reference client
 
 ## Lore & design
 

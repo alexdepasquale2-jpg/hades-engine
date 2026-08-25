@@ -2,24 +2,30 @@ const SCALE = 3;
 const ORIGIN_X = 450;
 const ORIGIN_Y = 300;
 
-let session = { iuoc: null, fwau: null, band: "Settled" };
+let session = { iuoc: null, fwau: null, band: "Settled", frame: "pmr.v1" };
 let entities = [];
 let keys = {};
 let ws = null;
 let moveVec = { dx: 0, dy: 0 };
+let clientTick = 0;
+let isNpmr = false;
 
 const canvas = document.getElementById("world");
 const ctx = canvas.getContext("2d");
 
 document.getElementById("btn-login").addEventListener("click", login);
-document.getElementById("btn-psi").addEventListener("click", queryPsi);
+document.getElementById("btn-psi").addEventListener("click", () => queryPsi("FutureSelf"));
+document.getElementById("btn-past").addEventListener("click", () => queryPsi("PastOwn"));
+document.getElementById("btn-npmr").addEventListener("click", () => handoff("npmr.academy.v1"));
+document.getElementById("btn-pmr").addEventListener("click", () => handoff("pmr.v1"));
 
 window.addEventListener("keydown", (e) => {
   keys[e.code] = true;
   if (e.code === "Space") {
     e.preventDefault();
-    queryPsi();
+    queryPsi("FutureSelf");
   }
+  if (e.code === "KeyB" && isNpmr) blinkTowardCursor();
   updateMoveVec();
 });
 
@@ -39,11 +45,14 @@ function updateMoveVec() {
   moveVec = { dx, dy };
 
   if (session.fwau && ws && ws.readyState === WebSocket.OPEN) {
+    clientTick += 1;
+    document.getElementById("client-tick").textContent = clientTick;
     ws.send(JSON.stringify({
       kind: "move",
       fwau: session.fwau,
       dx: moveVec.dx,
       dy: moveVec.dy,
+      tick: clientTick,
     }));
   }
 }
@@ -51,9 +60,11 @@ function updateMoveVec() {
 async function login() {
   const res = await fetch("/api/login");
   const data = await res.json();
-  session = { iuoc: data.iuoc, fwau: data.fwau, band: data.quality_band };
+  session = { iuoc: data.iuoc, fwau: data.fwau, band: data.quality_band, frame: data.frame };
+  isNpmr = data.frame.includes("npmr");
   document.getElementById("session-info").textContent =
-    `IUOC ${data.iuoc.toString().slice(0, 8)}… · FWAU bound`;
+    `IUOC ${data.iuoc.toString().slice(0, 8)}…`;
+  document.getElementById("frame-name").textContent = data.frame;
   setBand(data.quality_band);
   connectWs();
 }
@@ -64,25 +75,59 @@ function setBand(band) {
   el.className = "band " + band.toLowerCase();
 }
 
-async function queryPsi() {
+async function handoff(toFrame) {
+  if (!session.fwau) return;
+  const res = await fetch("/api/handoff", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau, to_frame: toFrame }),
+  });
+  const data = await res.json();
+  session.fwau = data.fwau;
+  session.frame = data.frame;
+  isNpmr = data.frame.includes("npmr");
+  document.getElementById("frame-name").textContent = data.frame;
+  setBand(data.quality_band);
+}
+
+async function blinkTowardCursor() {
+  if (!session.fwau) return;
+  const player = entities.find((e) => e.is_player);
+  if (!player) return;
+  const tx = player.x + moveVec.dx * 30;
+  const ty = player.y + moveVec.dy * 30;
+  await fetch("/api/blink", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau, x: tx, y: ty }),
+  });
+}
+
+async function queryPsi(scope) {
   if (!session.fwau) return;
   const res = await fetch("/api/psi", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fwau: session.fwau }),
+    body: JSON.stringify({ fwau: session.fwau, scope }),
   });
   const data = await res.json();
-  const list = document.getElementById("psi-odds");
-  list.innerHTML = "";
-  if (!data.odds.length) {
-    list.innerHTML = "<li>No probable futures in beam</li>";
-    return;
+  if (scope === "PastOwn") {
+    const list = document.getElementById("psi-recall");
+    list.innerHTML = "";
+    data.recall.forEach((r) => {
+      const li = document.createElement("li");
+      li.textContent = r;
+      list.appendChild(li);
+    });
+  } else {
+    const list = document.getElementById("psi-odds");
+    list.innerHTML = "";
+    data.odds.forEach((o) => {
+      const li = document.createElement("li");
+      li.textContent = `${(o.p * 100).toFixed(1)}% — ${o.label}`;
+      list.appendChild(li);
+    });
   }
-  data.odds.forEach((o) => {
-    const li = document.createElement("li");
-    li.textContent = `${(o.p * 100).toFixed(1)}% — ${o.label}`;
-    list.appendChild(li);
-  });
 }
 
 function connectWs() {
@@ -97,11 +142,32 @@ function connectWs() {
   ws.onclose = () => setTimeout(connectWs, 2000);
 }
 
+function flash(elId, text) {
+  const el = document.getElementById(elId);
+  if (text) el.textContent = text;
+  el.classList.remove("hidden");
+  setTimeout(() => el.classList.add("hidden"), 800);
+}
+
 function onSnapshot(snap) {
+  if (snap.corrections && snap.corrections.length > 0) {
+    flash("correction-flash", "Rewind correction");
+    const c = snap.corrections[0];
+    if (c.poses) {
+      entities = entities.map((e) => {
+        const p = c.poses.find((pp) => pp.entity.index === e.entity.index);
+        return p ? { ...e, x: p.x, y: p.y, z: p.z } : e;
+      });
+    }
+  }
+  if (snap.rejects && snap.rejects.length > 0) {
+    flash("reject-flash", snap.rejects[0].reason);
+  }
+
   entities = snap.entities || [];
   document.getElementById("tick").textContent = snap.tick;
   document.getElementById("entity-count").textContent = entities.length;
-  document.getElementById("ai-count").textContent = snap.ai_count ?? 0;
+  isNpmr = (snap.ruleset_id || "").includes("npmr");
   draw();
 }
 
@@ -118,13 +184,12 @@ async function pollStatus() {
 }
 
 function draw() {
-  ctx.fillStyle = "#060a10";
+  ctx.fillStyle = isNpmr ? "#0a0814" : "#060a10";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Grid — 32m cells (level 0)
-  ctx.strokeStyle = "#141c28";
-  ctx.lineWidth = 1;
   const cellPx = 32 * SCALE;
+  ctx.strokeStyle = isNpmr ? "#1a1530" : "#141c28";
+  ctx.lineWidth = 1;
   for (let x = ORIGIN_X % cellPx; x < canvas.width; x += cellPx) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
@@ -138,10 +203,9 @@ function draw() {
     ctx.stroke();
   }
 
-  // Interest radius (128m)
   const player = entities.find((e) => e.is_player);
   if (player) {
-    ctx.strokeStyle = "rgba(61, 158, 255, 0.25)";
+    ctx.strokeStyle = isNpmr ? "rgba(180, 120, 255, 0.3)" : "rgba(61, 158, 255, 0.25)";
     ctx.beginPath();
     ctx.arc(
       ORIGIN_X + player.x * SCALE,
@@ -162,24 +226,17 @@ function draw() {
     ctx.beginPath();
     ctx.arc(px, py, r, 0, Math.PI * 2);
     if (e.is_player) {
-      ctx.fillStyle = "#4ade80";
-    } else if (e.awake) {
-      ctx.fillStyle = "#f59e0b";
+      ctx.fillStyle = isNpmr ? "#c084fc" : "#4ade80";
     } else {
-      ctx.fillStyle = "#475569";
+      ctx.fillStyle = isNpmr ? "#a78bfa" : "#f59e0b";
     }
     ctx.fill();
-
-    if (e.is_player) {
-      ctx.strokeStyle = "#4ade80";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
   });
 
   ctx.fillStyle = "#7d8da1";
   ctx.font = "11px sans-serif";
-  ctx.fillText("PMR-Prime · observation allocates compute", 12, canvas.height - 10);
+  const label = isNpmr ? "NPMR-Academy · blink enabled" : "PMR-Prime · server-authoritative";
+  ctx.fillText(label, 12, canvas.height - 10);
 }
 
 setInterval(pollStatus, 1000);

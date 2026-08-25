@@ -5,6 +5,7 @@ use crate::grid::HierGrid;
 use crate::intent::{Intent, IntentQueue, Verb};
 use crate::iuoc::{EntityRef, IuocRegistry};
 use crate::ledger::{EntropyLedger, ResolvedAction};
+use crate::netcode::{Correction, EntityPose, IntentReject, NetcodeState};
 use crate::ruleset::Ruleset;
 use crate::types::{
   Entity, FwauId, FrameId, IslandId, IuocId, Tick, Vec3,
@@ -36,10 +37,20 @@ pub struct EntitySnapshot {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FrameSnapshot {
   pub frame_id: u32,
+  pub frame_name: String,
+  pub ruleset_id: String,
   pub tick: u64,
   pub entities: Vec<EntitySnapshot>,
   pub fwau_count: usize,
   pub ai_count: usize,
+  pub corrections: Vec<Correction>,
+  pub rejects: Vec<RejectNotice>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct RejectNotice {
+  pub fwau: u128,
+  pub reason: String,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -64,9 +75,11 @@ pub struct Frame {
   pub grid: HierGrid,
   pub islands: HashMap<IslandId, ProbabilitySurface>,
   pub intent_queues: HashMap<FwauId, IntentQueue>,
+  pub netcode: NetcodeState,
   pub rng_seed: u64,
   pub stall_count: u32,
   sleep_delay_ticks: u64,
+  player_last_pos: HashMap<FwauId, Vec3>,
 }
 
 impl Frame {
@@ -80,9 +93,11 @@ impl Frame {
       grid: HierGrid::new(),
       islands: HashMap::new(),
       intent_queues: HashMap::new(),
+      netcode: NetcodeState::new(),
       rng_seed: 0xA00,
       stall_count: 0,
       sleep_delay_ticks,
+      player_last_pos: HashMap::new(),
     }
   }
 
@@ -151,11 +166,192 @@ impl Frame {
     }
   }
 
-  pub fn submit_intent(&mut self, intent: Intent) -> bool {
-    if let Some(queue) = self.intent_queues.get_mut(&intent.fwau) {
-      queue.push(intent)
-    } else {
-      false
+  pub fn submit_intent(&mut self, intent: Intent) -> Result<(), IntentReject> {
+    if intent.verb == Verb::Move && intent.payload.len() >= 8 {
+      let dx = f32::from_le_bytes(intent.payload[0..4].try_into().unwrap());
+      let dy = f32::from_le_bytes(intent.payload[4..8].try_into().unwrap());
+      if dx.abs() > 1.05 || dy.abs() > 1.05 {
+        self.netcode.record_reject(intent.fwau, IntentReject::SpeedHack);
+        return Err(IntentReject::SpeedHack);
+      }
+    }
+
+    let needs_rewind = match self.netcode.accept_intent(intent.clone()) {
+      Ok(r) => r,
+      Err(e) => {
+        self.netcode.record_reject(intent.fwau, e.clone());
+        return Err(e);
+      }
+    };
+
+    if needs_rewind {
+      self.rewind_replay(intent.tick);
+    }
+    Ok(())
+  }
+
+  pub fn unbind_fwau(&mut self, fwau: FwauId) {
+    if let Some(entity) = self.find_avatar_for_fwau(fwau) {
+      self.grid.remove_entity(entity);
+      self.world.despawn(entity);
+    }
+    self.intent_queues.remove(&fwau);
+    self.player_last_pos.remove(&fwau);
+  }
+
+  fn collect_poses(&self) -> Vec<EntityPose> {
+    self
+      .world
+      .all_entities()
+      .iter()
+      .filter_map(|&e| {
+        self.world.get(e).map(|rec| EntityPose {
+          entity: rec.entity,
+          x: rec.transform.position.x,
+          y: rec.transform.position.y,
+          z: rec.transform.position.z,
+        })
+      })
+      .collect()
+  }
+
+  fn apply_poses(&mut self, poses: &[EntityPose]) {
+    for pose in poses {
+      if let Some(rec) = self.world.get_mut(pose.entity) {
+        rec.transform.position = Vec3::new(pose.x, pose.y, pose.z);
+        rec.dirty = true;
+      }
+    }
+  }
+
+  fn store_tick_snapshot(&mut self, tick: Tick) {
+    let poses = self.collect_poses();
+    self.netcode.store_snapshot(tick, poses);
+  }
+
+  fn rewind_replay(&mut self, from: Tick) {
+    let snap = self
+      .netcode
+      .snapshot_at(from)
+      .cloned()
+      .or_else(|| {
+        // Fall back to nearest ring slot if exact tick missing
+        self.netcode.ring.iter().find_map(|s| s.clone())
+      });
+
+    if snap.is_none() {
+      return;
+    }
+
+    self.apply_poses(&snap.unwrap().poses);
+    let auth = self.netcode.auth_tick.0;
+    let mut checksums = HashMap::new();
+
+    for t in from.0..auth {
+      let tick = Tick(t);
+      let intents = self.netcode.pending_for_tick(tick);
+      self.apply_move_intents(&intents);
+      self.integrate_physics(false);
+      let poses = self.collect_poses();
+      let cs = NetcodeState::checksum(&poses);
+      checksums.insert(t, cs);
+      if t % 2 == 0 {
+        self.netcode.store_snapshot(tick, poses);
+      }
+    }
+
+    let poses = self.collect_poses();
+    self.netcode.push_correction(Correction {
+      from_tick: from.0,
+      checksums,
+      poses,
+    });
+  }
+
+  fn apply_move_intents(&mut self, intents: &[Intent]) {
+    for intent in intents {
+      if intent.verb == Verb::Move && intent.payload.len() >= 8 {
+        let dx = f32::from_le_bytes(intent.payload[0..4].try_into().unwrap());
+        let dy = f32::from_le_bytes(intent.payload[4..8].try_into().unwrap());
+        if let Some(e) = self.find_avatar_for_fwau(intent.fwau) {
+          if let Some(rec) = self.world.get_mut(e) {
+            let speed = self.spec.ruleset.motion.max_speed;
+            rec.velocity.linear.x = dx.clamp(-1.0, 1.0) * speed;
+            rec.velocity.linear.y = dy.clamp(-1.0, 1.0) * speed;
+            rec.dirty = true;
+          }
+        }
+      } else if intent.verb == Verb::Blink && self.spec.ruleset.motion.blink {
+        if intent.payload.len() >= 8 {
+          let tx = f32::from_le_bytes(intent.payload[0..4].try_into().unwrap());
+          let ty = f32::from_le_bytes(intent.payload[4..8].try_into().unwrap());
+          if let Some(e) = self.find_avatar_for_fwau(intent.fwau) {
+            if let Some(rec) = self.world.get_mut(e) {
+              rec.transform.position.x = tx;
+              rec.transform.position.y = ty;
+              rec.velocity.linear = Vec3::ZERO;
+              rec.dirty = true;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  fn integrate_physics(&mut self, advance_beams: bool) {
+    let dt = self.spec.ruleset.dt_ms as f32 / 1000.0;
+    let max_step = self.spec.ruleset.motion.max_speed * dt * 1.15;
+    let entities: Vec<Entity> = self.world.awake_entities();
+
+    for entity in entities {
+      if let Some(rec) = self.world.get_mut(entity) {
+        if rec.avatar.as_ref().map(|a| a.dead).unwrap_or(false) {
+          continue;
+        }
+
+        if rec.brain.is_some() {
+          let seed = rec.brain.as_ref().map(|b| b.seed).unwrap_or(0);
+          let t = self.clock.tick.0 as f32;
+          rec.velocity.linear.x = ((seed as f32 + t) * 0.1).sin() * 2.0;
+          rec.velocity.linear.y = ((seed as f32 + t) * 0.13).cos() * 2.0;
+        }
+
+        let old = rec.transform.position;
+        rec.transform.position.x += rec.velocity.linear.x * dt;
+        rec.transform.position.y += rec.velocity.linear.y * dt;
+
+        if self.spec.ruleset.motion.gravity > 0.0 {
+          rec.velocity.linear.z -= self.spec.ruleset.motion.gravity * dt;
+          rec.transform.position.z += rec.velocity.linear.z * dt;
+          if rec.transform.position.z < 0.0 {
+            rec.transform.position.z = 0.0;
+            rec.velocity.linear.z = 0.0;
+          }
+        }
+
+        // Speed hack detection for FWAU avatars
+        if let Some(binding) = &rec.fwau_binding {
+          let dx = rec.transform.position.x - old.x;
+          let dy = rec.transform.position.y - old.y;
+          let dist = (dx * dx + dy * dy).sqrt();
+          if dist > max_step {
+            rec.transform.position = old;
+            rec.velocity.linear = Vec3::ZERO;
+            self.netcode.record_reject(binding.fwau_id, IntentReject::SpeedHack);
+          } else {
+            self.player_last_pos.insert(binding.fwau_id, rec.transform.position);
+          }
+        }
+
+        rec.dirty = true;
+        self.grid.on_move(entity, rec.transform.position, rec.interest_lod);
+      }
+    }
+
+    if advance_beams {
+      for surface in self.islands.values_mut() {
+        surface.advance(None);
+      }
     }
   }
 
@@ -171,77 +367,19 @@ impl Frame {
   pub fn step_once(&mut self, ledger: &mut EntropyLedger) {
     let tick = self.now();
 
-    // (1) gather intents
-    let mut all_intents: Vec<Intent> = Vec::new();
+    // Gather intents scheduled for this tick from netcode pending buffer
+    let mut all_intents = self.netcode.pending_for_tick(tick);
     for queue in self.intent_queues.values_mut() {
       all_intents.extend(queue.drain_for_tick(tick));
     }
 
-    // (2) movement from intents
-    for intent in &all_intents {
-      if intent.verb == Verb::Move && intent.payload.len() >= 8 {
-        let dx = f32::from_le_bytes(intent.payload[0..4].try_into().unwrap());
-        let dy = f32::from_le_bytes(intent.payload[4..8].try_into().unwrap());
-        let entity = self.find_avatar_for_fwau(intent.fwau);
-        if entity.is_some() {
-          let e = entity.unwrap();
-          if let Some(rec) = self.world.get_mut(e) {
-            let speed = self.spec.ruleset.motion.max_speed;
-            rec.velocity.linear.x = dx.clamp(-1.0, 1.0) * speed;
-            rec.velocity.linear.y = dy.clamp(-1.0, 1.0) * speed;
-            rec.dirty = true;
-          }
-        }
-      }
-    }
-
-    // (3) integrate movement + AI
-    let dt = self.spec.ruleset.dt_ms as f32 / 1000.0;
-    let entities: Vec<Entity> = self.world.awake_entities();
-    for entity in entities {
-      if let Some(rec) = self.world.get_mut(entity) {
-        if rec.avatar.as_ref().map(|a| a.dead).unwrap_or(false) {
-          continue;
-        }
-
-        if rec.brain.is_some() {
-          // Simple utility AI wander
-          let seed = rec.brain.as_ref().map(|b| b.seed).unwrap_or(0);
-          let t = self.clock.tick.0 as f32;
-          rec.velocity.linear.x = ((seed as f32 + t) * 0.1).sin() * 2.0;
-          rec.velocity.linear.y = ((seed as f32 + t) * 0.13).cos() * 2.0;
-        }
-
-        rec.transform.position.x += rec.velocity.linear.x * dt;
-        rec.transform.position.y += rec.velocity.linear.y * dt;
-
-        // gravity
-        if self.spec.ruleset.motion.gravity > 0.0 {
-          rec.velocity.linear.z -= self.spec.ruleset.motion.gravity * dt;
-          rec.transform.position.z += rec.velocity.linear.z * dt;
-          if rec.transform.position.z < 0.0 {
-            rec.transform.position.z = 0.0;
-            rec.velocity.linear.z = 0.0;
-          }
-        }
-
-        rec.dirty = true;
-        self.grid.on_move(entity, rec.transform.position, rec.interest_lod);
-      }
-    }
-
-    // (4) advance probability surfaces
-    for surface in self.islands.values_mut() {
-      surface.advance(None);
-    }
-
-    // (5) sleep/wake
+    self.apply_move_intents(&all_intents);
+    self.integrate_physics(true);
     self.update_sleep_states();
 
-    // (6) ledger enqueue for attacks
     for intent in &all_intents {
       if intent.verb == Verb::Attack {
-        if let Some(fwau) = self.fwau_from_intent(intent.fwau) {
+        if let Some(iuoc) = self.fwau_from_intent(intent.fwau) {
           let action = ResolvedAction {
             id: intent.seq as u128,
             aid: 0.0,
@@ -250,14 +388,14 @@ impl Frame {
             coerce: 0.0,
             perf: 0.0,
           };
-          let due = Tick(tick.0 + 600); // ~30s at 20Hz for demo
-          ledger.enqueue_consequence(fwau, &action, due);
+          ledger.enqueue_consequence(iuoc, &action, Tick(tick.0 + 600));
         }
       }
     }
 
-    // (7) flush ledger events that are due (demo: immediate short delay)
     ledger.flush_due(tick);
+    self.store_tick_snapshot(tick);
+    self.netcode.clear_pending_through(tick);
   }
 
   fn update_sleep_states(&mut self) {
@@ -292,7 +430,7 @@ impl Frame {
     false
   }
 
-  fn find_avatar_for_fwau(&self, fwau: FwauId) -> Option<Entity> {
+  pub fn find_avatar_for_fwau(&self, fwau: FwauId) -> Option<Entity> {
     for entity in self.world.all_entities() {
       if let Some(rec) = self.world.get(entity) {
         if let Some(binding) = &rec.fwau_binding {
@@ -313,7 +451,7 @@ impl Frame {
       .map(|b| b.iuoc_id)
   }
 
-  pub fn build_snapshot(&self) -> FrameSnapshot {
+  pub fn build_snapshot(&mut self) -> FrameSnapshot {
     let entities: Vec<EntitySnapshot> = self
       .world
       .all_entities()
@@ -338,10 +476,22 @@ impl Frame {
 
     FrameSnapshot {
       frame_id: self.spec.id.0,
+      frame_name: self.spec.name.clone(),
+      ruleset_id: self.spec.ruleset.id.clone(),
       tick: self.clock.tick.0,
       entities,
       fwau_count,
       ai_count,
+      corrections: self.netcode.drain_corrections(),
+      rejects: self
+        .netcode
+        .drain_rejects()
+        .into_iter()
+        .map(|(f, r)| RejectNotice {
+          fwau: f.0,
+          reason: format!("{:?}", r),
+        })
+        .collect(),
     }
   }
 
