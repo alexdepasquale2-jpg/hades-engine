@@ -6,6 +6,13 @@ resolver = "2"
 version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
+authors = ["The Big Computer contributors"]
+repository = "https://github.com/unfaithful/hades-engine"
+homepage = "https://github.com/unfaithful/hades-engine"
+documentation = "https://docs.rs/tbc-engine"
+readme = "README.md"
+keywords = ["game-engine", "mmorpg", "simulation", "netcode"]
+categories = ["game-development", "simulation"]
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }

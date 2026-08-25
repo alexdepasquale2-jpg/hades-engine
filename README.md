@@ -136,6 +136,7 @@ cargo test -p tbc-engine ops_health
 cargo test -p tbc-engine gameplay_ruleset
 cargo test -p tbc-engine npmr_dream
 cargo test -p tbc-engine consent_wire
+cargo test -p tbc-engine psi_social
 cargo test -p tbc-engine assist
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
@@ -186,6 +187,27 @@ Transport
 | M16 Consent-gated assist + CI | Done |
 | M17 Typed client SDK (`tbc-sdk`) | Done |
 | M18 Consent-stamped wire intents | Done |
+| M19 Release + crates.io publish | Done |
+
+## Publishing (M19)
+
+Published crates: **`tbc-engine`** (simulation core) and **`tbc-sdk`** (HTTP client). Application binaries `tbc-server` and `tbc-gateway` are workspace-only (`publish = false`).
+
+```bash
+# Verify packaging locally (no token required)
+cargo publish -p tbc-engine --dry-run
+# After tbc-engine is on crates.io:
+cargo publish -p tbc-sdk --dry-run
+```
+
+To publish from CI, add a `CARGO_REGISTRY_TOKEN` secret and push a version tag:
+
+```bash
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The **Release** workflow runs tests, `cargo publish` for both crates, and creates a GitHub release with `CHANGELOG.md`. See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## Client SDK (M17–M18)
 
