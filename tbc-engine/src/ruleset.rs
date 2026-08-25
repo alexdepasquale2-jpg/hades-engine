@@ -77,6 +77,8 @@ pub struct CrdtPolicy {
 pub struct VerbPolicies {
   pub attack: AttackPolicy,
   pub interact: InteractPolicy,
+  #[serde(default)]
+  pub speak: SpeakPolicy,
 }
 
 impl Default for VerbPolicies {
@@ -84,6 +86,22 @@ impl Default for VerbPolicies {
     Self {
       attack: AttackPolicy::default(),
       interact: InteractPolicy::default(),
+      speak: SpeakPolicy::default(),
+    }
+  }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SpeakPolicy {
+  pub enabled: bool,
+  pub range_m: f32,
+}
+
+impl Default for SpeakPolicy {
+  fn default() -> Self {
+    Self {
+      enabled: true,
+      range_m: 24.0,
     }
   }
 }
@@ -245,6 +263,10 @@ impl Ruleset {
           range_m: 4.0,
           item_prefix: "echo".into(),
         },
+        speak: SpeakPolicy {
+          enabled: true,
+          range_m: 20.0,
+        },
       },
     }
   }
@@ -311,6 +333,10 @@ impl Ruleset {
           range_m: 6.0,
           item_prefix: "thought".into(),
         },
+        speak: SpeakPolicy {
+          enabled: true,
+          range_m: 48.0,
+        },
       },
     }
   }
@@ -376,6 +402,10 @@ impl Ruleset {
           enabled: true,
           range_m: 8.0,
           item_prefix: "dream".into(),
+        },
+        speak: SpeakPolicy {
+          enabled: true,
+          range_m: 64.0,
         },
       },
     }

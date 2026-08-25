@@ -54,6 +54,7 @@ pub struct FrameSnapshot {
   pub shard_id: Option<u32>,
   pub guardrails: Option<GuardrailReport>,
   pub props: Vec<crate::crdt_props::CrdtProp>,
+  pub recent_speaks: Vec<crate::social::SpeakEvent>,
 }
 
 impl FrameSnapshot {
@@ -76,6 +77,7 @@ impl FrameSnapshot {
       "shard_id": self.shard_id,
       "guardrails": self.guardrails,
       "props": self.props,
+      "recent_speaks": self.recent_speaks,
     })
   }
 }
@@ -115,6 +117,7 @@ pub struct Frame {
   pub rng_seed: u64,
   pub guardrails: GuardrailState,
   pub prop_store: crate::crdt_props::PropStore,
+  pub recent_speaks: Vec<crate::social::SpeakEvent>,
   sleep_delay_ticks: u64,
   player_last_pos: HashMap<FwauId, Vec3>,
   was_awake: HashSet<Entity>,
@@ -144,6 +147,7 @@ impl Frame {
       rng_seed,
       guardrails: GuardrailState::new(guard_config),
       prop_store: crate::crdt_props::PropStore::new(),
+      recent_speaks: Vec::new(),
       sleep_delay_ticks,
       player_last_pos: HashMap::new(),
       was_awake: HashSet::new(),
@@ -599,6 +603,7 @@ impl Frame {
           .report(self.island_mgr.profiler.within_budget),
       ),
       props: self.prop_store.all(),
+      recent_speaks: self.recent_speaks.clone(),
     }
   }
 
@@ -657,6 +662,24 @@ impl Frame {
       .island_for_entity(entity.unwrap())
       .unwrap_or(IslandId(1));
     self.island_mgr.surface_odds(island_id)
+  }
+
+  /// FutureIsland scope — same surface as FutureSelf but labels include island id.
+  pub fn psi_future_island(&self, fwau: FwauId) -> Vec<(String, f32)> {
+    let entity = self.find_avatar_for_fwau(fwau);
+    if entity.is_none() {
+      return vec![];
+    }
+    let island_id = self
+      .island_mgr
+      .island_for_entity(entity.unwrap())
+      .unwrap_or(IslandId(1));
+    self
+      .island_mgr
+      .surface_odds(island_id)
+      .into_iter()
+      .map(|(label, p)| (format!("island-{}: {}", island_id.0, label), p))
+      .collect()
   }
 
   pub fn drain_elapsed(&mut self, elapsed: Duration) -> u32 {

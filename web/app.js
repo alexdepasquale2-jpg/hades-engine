@@ -39,6 +39,11 @@ document.getElementById("btn-login").addEventListener("click", login);
 document.getElementById("btn-resume").addEventListener("click", resumeSoul);
 document.getElementById("btn-psi").addEventListener("click", () => queryPsi("FutureSelf"));
 document.getElementById("btn-past").addEventListener("click", () => queryPsi("PastOwn"));
+document.getElementById("btn-psi-island").addEventListener("click", () => queryPsi("FutureIsland"));
+document.getElementById("btn-psi-shared").addEventListener("click", () => queryPsi("PastShared"));
+document.getElementById("btn-psi-rww").addEventListener("click", () => queryPsi("RwwQuery"));
+document.getElementById("btn-speak").addEventListener("click", speak);
+document.getElementById("btn-consent").addEventListener("click", grantConsent);
 document.getElementById("btn-npmr").addEventListener("click", () => handoff("npmr.academy.v1"));
 document.getElementById("btn-npmr-dream").addEventListener("click", () => handoff("npmr.dream.v1"));
 document.getElementById("btn-pmr").addEventListener("click", () => handoff("pmr.v1"));
@@ -60,6 +65,10 @@ window.addEventListener("keydown", (e) => {
   if (e.code === "KeyE") {
     e.preventDefault();
     interactNearest();
+  }
+  if (e.code === "KeyT") {
+    e.preventDefault();
+    speak();
   }
   updateMoveVec();
 });
@@ -181,23 +190,72 @@ async function queryPsi(scope) {
     body: JSON.stringify({ fwau: session.fwau, scope }),
   });
   const data = await res.json();
-  if (scope === "PastOwn") {
-    const list = document.getElementById("psi-recall");
-    list.innerHTML = "";
+  document.getElementById("psi-budget").textContent =
+    data.psi_budget_remaining != null ? data.psi_budget_remaining.toFixed(3) : "—";
+  document.getElementById("psi-message").textContent =
+    data.message || (data.allowed ? "" : "Psi blocked");
+
+  const recallList = document.getElementById("psi-recall");
+  const oddsList = document.getElementById("psi-odds");
+  recallList.innerHTML = "";
+  oddsList.innerHTML = "";
+
+  if (data.recall && data.recall.length) {
     data.recall.forEach((r) => {
       const li = document.createElement("li");
       li.textContent = r;
-      list.appendChild(li);
-    });
-  } else {
-    const list = document.getElementById("psi-odds");
-    list.innerHTML = "";
-    data.odds.forEach((o) => {
-      const li = document.createElement("li");
-      li.textContent = `${(o.p * 100).toFixed(1)}% — ${o.label}`;
-      list.appendChild(li);
+      recallList.appendChild(li);
     });
   }
+  if (data.odds && data.odds.length) {
+    data.odds.forEach((o) => {
+      const li = document.createElement("li");
+      const label = o.label || o[0];
+      const p = o.p != null ? o.p : o[1];
+      li.textContent = `${(p * 100).toFixed(1)}% — ${label}`;
+      oddsList.appendChild(li);
+    });
+  }
+}
+
+async function speak() {
+  if (!session.fwau) return;
+  const input = document.getElementById("speak-text");
+  const text = (input.value || "").trim();
+  if (!text) return;
+  const res = await fetch("/api/speak", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fwau: session.fwau, text }),
+  });
+  const data = await res.json();
+  document.getElementById("speak-result").textContent = data.message || "";
+  if (data.heard) {
+    flash("correction-flash", data.message);
+    input.value = "";
+  } else {
+    flash("reject-flash", data.message);
+  }
+}
+
+async function grantConsent() {
+  if (!session.fwau || !session.iuoc) return;
+  const res = await fetch("/api/consent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      fwau: session.fwau,
+      target_iuoc: session.iuoc,
+      scope: "assist",
+      ttl_ticks: 50000,
+    }),
+  });
+  const data = await res.json();
+  const msg = data.granted
+    ? `Consent granted (${data.pact})`
+    : data.pact || "Consent failed";
+  document.getElementById("speak-result").textContent = msg;
+  flash(data.granted ? "correction-flash" : "reject-flash", msg);
 }
 
 function clearOffers() {
@@ -414,6 +472,12 @@ function onSnapshot(snap) {
 
   entities = snap.entities || [];
   worldProps = snap.props || [];
+  if (snap.recent_speaks && snap.recent_speaks.length) {
+    const last = snap.recent_speaks[snap.recent_speaks.length - 1];
+    if (last.text) {
+      document.getElementById("speak-result").textContent = `Heard nearby: “${last.text}”`;
+    }
+  }
   document.getElementById("tick").textContent = snap.tick;
   document.getElementById("entity-count").textContent = entities.length;
   isNpmr = (snap.ruleset_id || "").includes("npmr");

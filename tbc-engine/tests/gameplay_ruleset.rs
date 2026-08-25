@@ -11,6 +11,7 @@ fn load_rulesets_from_dir() {
   assert_eq!(pmr.verbs.attack.damage, 34.0);
   let npmr = reg.get("npmr.academy.v1").expect("npmr");
   assert!(!npmr.verbs.attack.enabled);
+  assert_eq!(pmr.verbs.speak.range_m, 20.0);
 }
 
 #[test]

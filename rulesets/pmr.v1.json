@@ -28,6 +28,10 @@
       "enabled": true,
       "range_m": 4,
       "item_prefix": "echo"
+    },
+    "speak": {
+      "enabled": true,
+      "range_m": 20
     }
   }
 }

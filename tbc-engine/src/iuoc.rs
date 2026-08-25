@@ -263,6 +263,43 @@ impl IuocRegistry {
   pub fn packets_for(&self, iuoc: IuocId) -> &[ExperiencePacket] {
     self.packets.get(&iuoc).map(|p| p.as_slice()).unwrap_or(&[])
   }
+
+  pub fn recent_shared_summaries(&self, exclude: IuocId, limit: usize) -> Vec<String> {
+    let mut out: Vec<(u64, String)> = Vec::new();
+    for (iuoc, list) in &self.packets {
+      if *iuoc == exclude {
+        continue;
+      }
+      for p in list {
+        out.push((p.unbound_at.0, format!("Soul {}: {}", iuoc.0, p.summary)));
+      }
+    }
+    out.sort_by_key(|(t, _)| *t);
+    out.into_iter().rev().take(limit).map(|(_, s)| s).collect()
+  }
+
+  pub fn spend_psi_budget(&mut self, fwau: FwauId, cost: f32) -> bool {
+    if let Some(session) = self.fwau_sessions.get_mut(&fwau) {
+      if session.psi_budget >= cost {
+        session.psi_budget -= cost;
+        return true;
+      }
+    }
+    false
+  }
+
+  pub fn psi_budget_remaining(&self, fwau: FwauId) -> f32 {
+    self.fwau_sessions.get(&fwau).map(|f| f.psi_budget).unwrap_or(0.0)
+  }
+
+  pub fn add_consent_pact(&mut self, iuoc: IuocId, pact: String) -> Result<(), BindError> {
+    let soul = self.souls.get_mut(&iuoc).ok_or(BindError::NotFound)?;
+    if !soul.consent.pacts.contains(&pact) {
+      soul.consent.pacts.push(pact);
+    }
+    self.persist_soul(iuoc);
+    Ok(())
+  }
 }
 
 pub fn psi_budget(quality: QualityScalar) -> f32 {

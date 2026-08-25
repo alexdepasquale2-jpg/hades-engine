@@ -111,11 +111,24 @@
       </section>
 
       <section>
-        <h2>Psi</h2>
-        <button id="btn-psi">FutureSelf (odds)</button>
-        <button id="btn-past">PastOwn (recall)</button>
+        <h2>Psi (M15)</h2>
+        <button id="btn-psi">FutureSelf</button>
+        <button id="btn-past">PastOwn</button>
+        <button id="btn-psi-island" class="npmr-only">FutureIsland</button>
+        <button id="btn-psi-shared" class="npmr-only">PastShared</button>
+        <button id="btn-psi-rww" class="npmr-only">RwwQuery</button>
+        <p class="hint">Budget: <span id="psi-budget">—</span></p>
+        <p id="psi-message" class="hint"></p>
         <ul id="psi-odds" class="odds-list"></ul>
         <ul id="psi-recall" class="odds-list"></ul>
+      </section>
+
+      <section>
+        <h2>Social (M15)</h2>
+        <input id="speak-text" type="text" maxlength="120" placeholder="Speak into the field…" />
+        <button id="btn-speak">Speak</button>
+        <button id="btn-consent">Grant assist consent</button>
+        <p id="speak-result" class="hint"></p>
       </section>
 
       <section>
@@ -125,7 +138,7 @@
 
       <section>
         <h2>Controls</h2>
-        <p class="hint">WASD move · B blink (NPMR) · Space psi · Late intents trigger rewind</p>
+        <p class="hint">WASD move · B blink (NPMR) · Space psi · T speak · Late intents trigger rewind</p>
       </section>
     </aside>
 

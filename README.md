@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M14 vertical slice** of the spec:
+**M1–M15 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -22,7 +22,8 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `RwwBus` | §9 M10 | In-memory + NATS JetStream (`TBC_RWW` stream) |
 | `transport` | §10 | Framed JSON reliable + 36-byte move datagrams |
 | `CrdtProp` / `PropStore` | M14 | Or-set props in NPMR frames from interact |
-| `VerbPolicies` | M13 | Attack/interact from ruleset JSON, conservation inventory |
+| `VerbPolicies` | M13/M15 | Attack/interact/speak from ruleset JSON |
+| `query_psi` / `speak` | M15 | Ruleset-gated psi scopes + social broadcast |
 | `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
 | Debug server | §10 | HTTP + WebSocket — cluster **6014**, shard-00 **6020**, shard-01 **6021** |
@@ -70,7 +71,7 @@ Default cluster mode (no `TBC_SHARD_ID`) keeps in-process handoff on port **6014
 3. **WASD** — move; walk **east (→)** past the yellow seam at x=0 for shard handoff
 4. **Unbind / death** — experience packets persist; reincarnation offers use archived history
 5. **Enter NPMR-Academy** — frame handoff via RWW
-6. **B** — blink in NPMR · **F** strike · **E** interact (ruleset verbs) · **FutureSelf / PastOwn** — psi queries
+6. **B** — blink in NPMR · **F** strike · **E** interact · **T** speak · psi scopes (PMR: FutureSelf/PastOwn; NPMR: +PastShared/FutureIsland/RwwQuery)
 
 ### QUIC gateway (M12 production transport)
 
@@ -123,7 +124,7 @@ docker compose up --build
 cargo test -p tbc-engine
 ```
 
-35+ tests cover core simulation, M8–M14.
+35+ tests cover core simulation, M8–M15.
 
 ```bash
 cargo test -p tbc-engine scale_guardrails
@@ -132,6 +133,7 @@ cargo test -p tbc-engine shard_multinode
 cargo test -p tbc-engine ops_health
 cargo test -p tbc-engine gameplay_ruleset
 cargo test -p tbc-engine npmr_dream
+cargo test -p tbc-engine psi_social
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
@@ -177,6 +179,7 @@ Transport
 | M12 Production transport + ops | Done |
 | M13 Gameplay depth (ruleset-driven) | Done |
 | M14 NPMR Dream + CRDT props + handoff policy | Done |
+| M15 Psi scopes + Speak + Consent | Done |
 
 ## Rulesets
 

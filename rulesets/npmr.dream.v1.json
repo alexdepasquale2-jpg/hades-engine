@@ -33,6 +33,10 @@
       "enabled": true,
       "range_m": 8,
       "item_prefix": "dream"
+    },
+    "speak": {
+      "enabled": true,
+      "range_m": 64
     }
   }
 }

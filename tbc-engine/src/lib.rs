@@ -19,9 +19,11 @@ pub mod netcode;
 pub mod ops;
 pub mod persist;
 pub mod planner;
+pub mod psi;
 pub mod ruleset;
 pub mod rww;
 pub mod shard;
+pub mod social;
 pub mod transport;
 pub mod types;
 
@@ -353,12 +355,23 @@ pub mod aum {
             .position(|f| f.shard_bounds.as_ref().map(|s| s.id) == Some(target_shard));
           if let Some(to) = to_idx {
             if to != i {
-              let iuoc = self.frames[i].iuoc_for_fwau(fwau);
-              if self.handoff_fwau(fwau, i, to).is_ok() {
-                let new_fwau = iuoc
-                  .and_then(|id| self.iuoc.get(id).and_then(|s| s.bound_fwau))
-                  .unwrap_or(fwau);
-                completed.push((fwau, new_fwau, to));
+              let frame = &self.frames[i];
+              let iuoc = frame.iuoc_for_fwau(fwau);
+              let pos = frame
+                .find_avatar_for_fwau(fwau)
+                .and_then(|e| frame.world.get(e))
+                .map(|r| r.transform.position)
+                .unwrap_or(Vec3::ZERO);
+              if let Some(iuoc_id) = iuoc {
+                self.frames[i].unbind_fwau(fwau);
+                if let Ok(new_fwau) = self.frames[to].bind_player(&mut self.iuoc, iuoc_id, pos) {
+                  self.rww.publish_fwau_bound(
+                    new_fwau.0,
+                    &self.frames[to].spec.ruleset.id,
+                    self.frames[to].now().0,
+                  );
+                  completed.push((fwau, new_fwau, to));
+                }
               }
             }
           }

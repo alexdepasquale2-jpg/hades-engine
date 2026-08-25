@@ -27,6 +27,10 @@
       "enabled": true,
       "range_m": 6,
       "item_prefix": "thought"
+    },
+    "speak": {
+      "enabled": true,
+      "range_m": 48
     }
   }
 }

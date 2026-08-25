@@ -12,6 +12,8 @@ use tbc_engine::aum::AumCore;
 use tbc_engine::frame::FrameSnapshot;
 use tbc_engine::persist::SoulArchive;
 use tbc_engine::planner::ReincarnationOffer;
+use tbc_engine::psi::PsiResponse as EnginePsiResponse;
+use tbc_engine::social::SpeakResult;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -98,16 +100,25 @@ struct PsiRequest {
   scope: Option<String>,
 }
 
-#[derive(Serialize)]
-struct PsiResponse {
-  odds: Vec<PsiOdd>,
-  recall: Vec<String>,
+#[derive(Deserialize)]
+struct SpeakRequest {
+  fwau: u128,
+  text: String,
+}
+
+#[derive(Deserialize)]
+struct ConsentRequest {
+  fwau: u128,
+  target_iuoc: u128,
+  scope: String,
+  ttl_ticks: Option<u64>,
 }
 
 #[derive(Serialize)]
-struct PsiOdd {
-  label: String,
-  p: f32,
+struct ConsentResponse {
+  pact: String,
+  granted: bool,
+  has_consent: bool,
 }
 
 #[derive(Deserialize)]
@@ -174,6 +185,8 @@ async fn main() {
     .route("/api/blink", axum::routing::post(blink))
     .route("/api/handoff", axum::routing::post(handoff))
     .route("/api/psi", axum::routing::post(psi_query))
+    .route("/api/speak", axum::routing::post(speak))
+    .route("/api/consent", axum::routing::post(consent_grant))
     .route("/api/offers", get(offers))
     .route("/api/unbind", axum::routing::post(unbind))
     .route("/api/reincarnate", axum::routing::post(reincarnate))
@@ -555,30 +568,57 @@ async fn handoff(
 async fn psi_query(
   State(state): State<Arc<AppState>>,
   Json(req): Json<PsiRequest>,
-) -> Json<PsiResponse> {
+) -> Json<EnginePsiResponse> {
   let mut guard = state.aum.lock().await;
   let fwau = FwauId(req.fwau);
   let session = state.sessions.lock().await.get(&fwau).cloned();
   let frame_idx = session.as_ref().map(|s| s.frame_idx).unwrap_or(0);
   let iuoc = session.as_ref().map(|s| s.iuoc).unwrap_or(IuocId(0));
-
   let scope = req.scope.as_deref().unwrap_or("FutureSelf");
-  let recall = if scope == "PastOwn" {
-    guard.psi_past_own(iuoc)
-  } else {
-    vec![]
-  };
+  Json(guard.query_psi(frame_idx, fwau, iuoc, scope))
+}
 
-  let odds = guard
-    .frames
-    .get(frame_idx)
-    .map(|f| f.psi_future_self(fwau))
-    .unwrap_or_default()
-    .into_iter()
-    .map(|(label, p)| PsiOdd { label, p })
-    .collect();
+async fn speak(
+  State(state): State<Arc<AppState>>,
+  Json(req): Json<SpeakRequest>,
+) -> Json<SpeakResult> {
+  let mut guard = state.aum.lock().await;
+  let fwau = FwauId(req.fwau);
+  let frame_idx = state
+    .sessions
+    .lock()
+    .await
+    .get(&fwau)
+    .map(|s| s.frame_idx)
+    .unwrap_or(0);
+  Json(guard.speak(frame_idx, fwau, &req.text))
+}
 
-  Json(PsiResponse { odds, recall })
+async fn consent_grant(
+  State(state): State<Arc<AppState>>,
+  Json(req): Json<ConsentRequest>,
+) -> Json<ConsentResponse> {
+  let mut guard = state.aum.lock().await;
+  let fwau = FwauId(req.fwau);
+  let session = state.sessions.lock().await.get(&fwau).cloned();
+  let from = session.as_ref().map(|s| s.iuoc).unwrap_or(IuocId(0));
+  let target = IuocId(req.target_iuoc);
+  let ttl = req.ttl_ticks.unwrap_or(20_000);
+  match guard.grant_consent(from, target, &req.scope, ttl) {
+    Ok(pact) => {
+      let has = guard.has_consent(from, target, &req.scope);
+      Json(ConsentResponse {
+        pact,
+        granted: true,
+        has_consent: has,
+      })
+    }
+    Err(e) => Json(ConsentResponse {
+      pact: e,
+      granted: false,
+      has_consent: false,
+    }),
+  }
 }
 
 async fn offers(State(state): State<Arc<AppState>>, Query(q): Query<OffersQuery>) -> Json<Vec<ReincarnationOffer>> {
