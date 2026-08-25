@@ -155,8 +155,10 @@ async fn main() {
         40
       } else if i < 2 {
         40
-      } else {
+      } else if i == 2 {
         8
+      } else {
+        12
       };
       frame.spawn_demo_world(count);
     }
@@ -510,7 +512,16 @@ async fn handoff(
     .position(|f| f.spec.ruleset.id == req.to_frame)
     .unwrap_or(1);
 
-  guard.handoff_fwau(old_fwau, from_idx, to_idx).ok();
+  let handoff_result = guard.handoff_fwau(old_fwau, from_idx, to_idx);
+  if let Err(e) = handoff_result {
+    return Json(LoginResponse {
+      iuoc: session.as_ref().map(|s| s.iuoc.0).unwrap_or(0),
+      fwau: old_fwau.0,
+      quality_band: "—".to_string(),
+      frame: req.to_frame,
+      message: e,
+    });
+  }
 
   let iuoc = session.as_ref().map(|s| s.iuoc).unwrap_or(IuocId(0));
   let new_fwau = guard.iuoc.get(iuoc).and_then(|s| s.bound_fwau).unwrap_or(old_fwau);

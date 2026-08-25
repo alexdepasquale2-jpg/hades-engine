@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M13 vertical slice** of the spec:
+**M1–M14 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -21,6 +21,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `Reincarnation planner` | §11 M7 | K=5 ranked offers, accept + rebirth |
 | `RwwBus` | §9 M10 | In-memory + NATS JetStream (`TBC_RWW` stream) |
 | `transport` | §10 | Framed JSON reliable + 36-byte move datagrams |
+| `CrdtProp` / `PropStore` | M14 | Or-set props in NPMR frames from interact |
 | `VerbPolicies` | M13 | Attack/interact from ruleset JSON, conservation inventory |
 | `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
@@ -122,7 +123,7 @@ docker compose up --build
 cargo test -p tbc-engine
 ```
 
-33 tests cover core simulation, M8–M13 (guardrails, archive, RWW, shards, ops, gameplay).
+35+ tests cover core simulation, M8–M14.
 
 ```bash
 cargo test -p tbc-engine scale_guardrails
@@ -130,6 +131,7 @@ cargo test -p tbc-engine persist_hydrate
 cargo test -p tbc-engine shard_multinode
 cargo test -p tbc-engine ops_health
 cargo test -p tbc-engine gameplay_ruleset
+cargo test -p tbc-engine npmr_dream
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
@@ -148,7 +150,8 @@ AUM_Core
 │   ├── GuardrailState   rate limits + budget enforcement
 │   ├── NetcodeState     snapshot ring, rewind-replay
 │   └── HierGrid         render-on-observation
-├── Frame NPMR-Academy   Δt=200ms, blink, loose ruleset
+├── Frame NPMR-Academy   Δt=200ms, blink, CRDT props
+├── Frame NPMR-Dream     Δt=200ms, looser ruleset, dream echoes
 └── Reincarnation planner  K=5 ranked packet templates
 
 Transport
@@ -173,11 +176,13 @@ Transport
 | M11 Multi-node PMR sharding | Done |
 | M12 Production transport + ops | Done |
 | M13 Gameplay depth (ruleset-driven) | Done |
+| M14 NPMR Dream + CRDT props + handoff policy | Done |
 
 ## Rulesets
 
 - `rulesets/pmr.v1.json` — tight PMR-Prime (20 Hz, gravity, conserved items)
 - `rulesets/npmr.academy.v1.json` — loose NPMR (blink, CRDT props)
+- `rulesets/npmr.dream.v1.json` — deepest NPMR (blink, dream props, handoff hub)
 
 ## Lore & design
 

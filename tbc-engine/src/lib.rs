@@ -5,6 +5,7 @@
 
 pub mod beam;
 pub mod clock;
+pub mod crdt_props;
 pub mod ecs;
 pub mod frame;
 pub mod gameplay;
@@ -121,6 +122,10 @@ pub mod aum {
         .get("npmr.academy.v1")
         .cloned()
         .unwrap_or_else(Ruleset::npmr_academy);
+      let dream = reg
+        .get("npmr.dream.v1")
+        .cloned()
+        .unwrap_or_else(Ruleset::npmr_dream);
       vec![
         Frame::new_with_shard(
           FrameSpec {
@@ -144,6 +149,12 @@ pub mod aum {
           id: FrameId(3),
           name: npmr.title.clone(),
           ruleset: npmr,
+          genesis_hash,
+        }),
+        Frame::new(FrameSpec {
+          id: FrameId(4),
+          name: dream.title.clone(),
+          ruleset: dream,
           genesis_hash,
         }),
       ]
@@ -244,6 +255,23 @@ pub mod aum {
     ) -> Result<(), String> {
       if from_idx == to_idx {
         return Ok(());
+      }
+      if from_idx >= self.frames.len() || to_idx >= self.frames.len() {
+        return Err("frame index out of range".into());
+      }
+      let to_ruleset = self.frames[to_idx].spec.ruleset.id.clone();
+      if !self.frames[from_idx]
+        .spec
+        .ruleset
+        .handoff
+        .allowed_targets
+        .contains(&to_ruleset)
+      {
+        return Err(format!(
+          "ruleset {} forbids handoff to {}",
+          self.frames[from_idx].spec.ruleset.id,
+          to_ruleset
+        ));
       }
       let entity = self.frames[from_idx]
         .find_avatar_for_fwau(fwau)

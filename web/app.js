@@ -12,6 +12,7 @@ let clientTick = 0;
 let isNpmr = false;
 let shardId = null;
 let nodeDistributed = false;
+let worldProps = [];
 
 function updateOps(ops) {
   if (!ops) return;
@@ -39,6 +40,7 @@ document.getElementById("btn-resume").addEventListener("click", resumeSoul);
 document.getElementById("btn-psi").addEventListener("click", () => queryPsi("FutureSelf"));
 document.getElementById("btn-past").addEventListener("click", () => queryPsi("PastOwn"));
 document.getElementById("btn-npmr").addEventListener("click", () => handoff("npmr.academy.v1"));
+document.getElementById("btn-npmr-dream").addEventListener("click", () => handoff("npmr.dream.v1"));
 document.getElementById("btn-pmr").addEventListener("click", () => handoff("pmr.v1"));
 document.getElementById("btn-unbind").addEventListener("click", unbindDeath);
 document.getElementById("btn-attack").addEventListener("click", () => attackNearest());
@@ -411,6 +413,7 @@ function onSnapshot(snap) {
   }
 
   entities = snap.entities || [];
+  worldProps = snap.props || [];
   document.getElementById("tick").textContent = snap.tick;
   document.getElementById("entity-count").textContent = entities.length;
   isNpmr = (snap.ruleset_id || "").includes("npmr");
@@ -496,6 +499,19 @@ function draw() {
     );
     ctx.stroke();
   }
+
+  worldProps.forEach((p) => {
+    const px = ORIGIN_X + p.x * SCALE;
+    const py = ORIGIN_Y - p.y * SCALE;
+    ctx.fillStyle = "rgba(236, 72, 153, 0.75)";
+    ctx.beginPath();
+    ctx.moveTo(px, py - 5);
+    ctx.lineTo(px + 5, py);
+    ctx.lineTo(px, py + 5);
+    ctx.lineTo(px - 5, py);
+    ctx.closePath();
+    ctx.fill();
+  });
 
   entities.forEach((e) => {
     if (!e.awake && !e.is_player) return;

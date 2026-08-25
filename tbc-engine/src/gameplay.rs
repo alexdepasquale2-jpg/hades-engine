@@ -271,13 +271,7 @@ impl Frame {
         }
       }
       rec.dirty = true;
-
       let inventory = avatar.inventory.clone();
-      let message = if item_granted.is_some() {
-        format!("Echo received from {}.", target_name)
-      } else {
-        format!("Spoke with {}.", target_name)
-      };
 
       if let Some(iuoc) = iuoc_id {
         ledger.enqueue_consequence(
@@ -293,6 +287,34 @@ impl Frame {
           Tick(now + 800),
         );
       }
+
+      let prop_placed = if self.spec.ruleset.crdt.is_some() {
+        let prop_id = format!("prop:{}:{}", policy.item_prefix, target_entity.index);
+        let prop = crate::crdt_props::CrdtProp {
+          id: prop_id,
+          kind: policy.item_prefix.clone(),
+          x: player_pos.x,
+          y: player_pos.y,
+          z: 0.0,
+          author_fwau: fwau.0,
+          placed_tick: now,
+        };
+        self.prop_store.add(prop)
+      } else {
+        false
+      };
+
+      let message = if item_granted.is_some() {
+        if prop_placed {
+          format!("Echo and CRDT prop placed near {}.", target_name)
+        } else {
+          format!("Echo received from {}.", target_name)
+        }
+      } else if prop_placed {
+        format!("CRDT prop placed near {}.", target_name)
+      } else {
+        format!("Spoke with {}.", target_name)
+      };
 
       return InteractResult {
         hit: true,

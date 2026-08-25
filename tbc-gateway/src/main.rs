@@ -73,8 +73,10 @@ async fn main() {
         40
       } else if i < 2 {
         40
-      } else {
+      } else if i == 2 {
         8
+      } else {
+        12
       };
       frame.spawn_demo_world(count);
     }
@@ -290,6 +292,60 @@ async fn handle_reliable(
     }
     "snapshot" => {
       if let Some(fwau) = msg.fwau_u128() {
+        push_snapshot(state, FwauId(fwau), send).await;
+      }
+    }
+    "attack" => {
+      if let Some(fwau) = msg.fwau_u128() {
+        let frame_idx = state
+          .sessions
+          .lock()
+          .await
+          .get(&FwauId(fwau))
+          .map(|s| s.frame_idx)
+          .unwrap_or(0);
+        let target = msg
+          .payload
+          .get("target_entity")
+          .and_then(|v| v.as_u64())
+          .map(|idx| tbc_engine::types::Entity {
+            index: idx as u32,
+            generation: 0,
+          });
+        let mut guard = state.aum.lock().await;
+        let result = guard.attack(frame_idx, FwauId(fwau), target);
+        drop(guard);
+        if let Ok(bytes) = encode_reliable(&WireMessage {
+          kind: "attack_result".into(),
+          tick: None,
+          fwau: Some(fwau.to_string()),
+          payload: serde_json::to_value(&result).unwrap_or_default(),
+        }) {
+          let _ = send.write_all(&bytes).await;
+        }
+        push_snapshot(state, FwauId(fwau), send).await;
+      }
+    }
+    "interact" => {
+      if let Some(fwau) = msg.fwau_u128() {
+        let frame_idx = state
+          .sessions
+          .lock()
+          .await
+          .get(&FwauId(fwau))
+          .map(|s| s.frame_idx)
+          .unwrap_or(0);
+        let mut guard = state.aum.lock().await;
+        let result = guard.interact(frame_idx, FwauId(fwau));
+        drop(guard);
+        if let Ok(bytes) = encode_reliable(&WireMessage {
+          kind: "interact_result".into(),
+          tick: None,
+          fwau: Some(fwau.to_string()),
+          payload: serde_json::to_value(&result).unwrap_or_default(),
+        }) {
+          let _ = send.write_all(&bytes).await;
+        }
         push_snapshot(state, FwauId(fwau), send).await;
       }
     }

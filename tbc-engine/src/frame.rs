@@ -53,6 +53,7 @@ pub struct FrameSnapshot {
   pub island_profiler: Option<crate::islands::IslandProfiler>,
   pub shard_id: Option<u32>,
   pub guardrails: Option<GuardrailReport>,
+  pub props: Vec<crate::crdt_props::CrdtProp>,
 }
 
 impl FrameSnapshot {
@@ -74,6 +75,7 @@ impl FrameSnapshot {
       "island_profiler": self.island_profiler,
       "shard_id": self.shard_id,
       "guardrails": self.guardrails,
+      "props": self.props,
     })
   }
 }
@@ -112,6 +114,7 @@ pub struct Frame {
   pub pending_kills: Vec<(Entity, FwauId)>,
   pub rng_seed: u64,
   pub guardrails: GuardrailState,
+  pub prop_store: crate::crdt_props::PropStore,
   sleep_delay_ticks: u64,
   player_last_pos: HashMap<FwauId, Vec3>,
   was_awake: HashSet<Entity>,
@@ -140,6 +143,7 @@ impl Frame {
       pending_kills: Vec::new(),
       rng_seed,
       guardrails: GuardrailState::new(guard_config),
+      prop_store: crate::crdt_props::PropStore::new(),
       sleep_delay_ticks,
       player_last_pos: HashMap::new(),
       was_awake: HashSet::new(),
@@ -594,6 +598,7 @@ impl Frame {
           .guardrails
           .report(self.island_mgr.profiler.within_budget),
       ),
+      props: self.prop_store.all(),
     }
   }
 
