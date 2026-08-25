@@ -222,6 +222,14 @@ function updateProfiler(prof) {
   budgetEl.className = prof.within_budget ? "budget-ok" : "budget-over";
 }
 
+function updateGuardrails(g) {
+  if (!g) return;
+  document.getElementById("guard-stalls").textContent = g.stall_count;
+  document.getElementById("guard-overruns").textContent = g.budget_overruns;
+  document.getElementById("guard-rate").textContent = g.rate_limited;
+  document.getElementById("guard-throttled").textContent = g.throttled_ticks;
+}
+
 function onSnapshot(snap) {
   if (snap.corrections && snap.corrections.length > 0) {
     flash("correction-flash", "Rewind correction");
@@ -245,6 +253,7 @@ function onSnapshot(snap) {
   document.getElementById("shard-id").textContent =
     shardId != null ? `shard-${shardId}` : (isNpmr ? "NPMR" : "—");
   updateProfiler(snap.island_profiler);
+  updateGuardrails(snap.guardrails);
   draw();
 }
 
@@ -258,6 +267,7 @@ async function pollStatus() {
       document.getElementById("entity-count").textContent = data.entities;
     }
     updateProfiler(data.island_profiler);
+    updateGuardrails(data.guardrails);
   } catch (_) {}
 }
 

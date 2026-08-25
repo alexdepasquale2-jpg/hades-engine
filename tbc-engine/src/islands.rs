@@ -144,15 +144,36 @@ impl IslandManager {
   }
 
   pub fn advance_all(&mut self, intent_action: Option<u8>) {
+    self.advance_with_budget(intent_action, IslandProfiler::STEP_BUDGET_PER_TICK, false);
+  }
+
+  /// Advance islands; when `enforce_budget` is true, throttle beam depth once budget is exceeded.
+  pub fn advance_with_budget(
+    &mut self,
+    intent_action: Option<u8>,
+    budget: usize,
+    enforce_budget: bool,
+  ) -> bool {
     let mut total_steps = 0;
     let mut max_steps = 0;
-    for surface in self.islands.values_mut() {
-      surface.advance(intent_action);
-      total_steps += surface.steps_per_tick;
-      max_steps = max_steps.max(surface.steps_per_tick);
+    let throttled = enforce_budget;
+    let island_ids: Vec<IslandId> = self.islands.keys().copied().collect();
+
+    for island_id in island_ids {
+      if let Some(surface) = self.islands.get_mut(&island_id) {
+        if throttled && total_steps >= budget {
+          surface.advance_with_depth(intent_action, 2);
+        } else {
+          surface.advance(intent_action);
+        }
+        total_steps += surface.steps_per_tick;
+        max_steps = max_steps.max(surface.steps_per_tick);
+      }
     }
+
     let obs_count = self.observe_queue.len();
     self.profiler.record_tick(self.islands.len(), total_steps, max_steps, obs_count);
+    throttled && total_steps > budget
   }
 
   pub fn collapse_observations(&mut self) -> Vec<(IslandId, ObservationResult)> {

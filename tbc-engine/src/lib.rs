@@ -7,6 +7,7 @@ pub mod beam;
 pub mod clock;
 pub mod ecs;
 pub mod frame;
+pub mod guardrails;
 pub mod grid;
 pub mod islands;
 pub mod intent;

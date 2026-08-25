@@ -45,6 +45,7 @@ struct StatusResponse {
   ruleset: String,
   frames: Vec<FrameInfo>,
   island_profiler: Option<tbc_engine::islands::IslandProfiler>,
+  guardrails: Option<tbc_engine::guardrails::GuardrailReport>,
 }
 
 #[derive(Serialize)]
@@ -186,6 +187,7 @@ async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
     ruleset: guard.frames[0].spec.ruleset.id.clone(),
     frames,
     island_profiler: frame.island_profiler.clone(),
+    guardrails: frame.guardrails.clone(),
   })
 }
 

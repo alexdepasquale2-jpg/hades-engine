@@ -1,4 +1,5 @@
-use crate::beam::{ObservationResult};
+use crate::beam::ObservationResult;
+use crate::guardrails::{GuardrailConfig, GuardrailReport, GuardrailState};
 use crate::clock::DeltaTClock;
 use crate::ecs::World;
 use crate::grid::HierGrid;
@@ -49,6 +50,7 @@ pub struct FrameSnapshot {
   pub rejects: Vec<RejectNotice>,
   pub island_profiler: Option<crate::islands::IslandProfiler>,
   pub shard_id: Option<u32>,
+  pub guardrails: Option<GuardrailReport>,
 }
 
 impl FrameSnapshot {
@@ -69,6 +71,7 @@ impl FrameSnapshot {
       })).collect::<Vec<_>>(),
       "island_profiler": self.island_profiler,
       "shard_id": self.shard_id,
+      "guardrails": self.guardrails,
     })
   }
 }
@@ -105,7 +108,7 @@ pub struct Frame {
   pub shard_bounds: Option<ShardBounds>,
   pub pending_shard_handoffs: Vec<(FwauId, u32)>,
   pub rng_seed: u64,
-  pub stall_count: u32,
+  pub guardrails: GuardrailState,
   sleep_delay_ticks: u64,
   player_last_pos: HashMap<FwauId, Vec3>,
   was_awake: HashSet<Entity>,
@@ -120,6 +123,7 @@ impl Frame {
     let dt_ms = spec.ruleset.dt_ms as u64;
     let sleep_delay_ticks = (spec.ruleset.sleep.delay_s * 1000.0 / dt_ms as f32) as u64;
     let rng_seed = 0xA00 + shard_bounds.as_ref().map(|s| s.id as u64).unwrap_or(0);
+    let guard_config = GuardrailConfig::for_dt_ms(spec.ruleset.dt_ms);
     Self {
       clock: DeltaTClock::new(dt_ms),
       spec,
@@ -131,7 +135,7 @@ impl Frame {
       shard_bounds,
       pending_shard_handoffs: Vec::new(),
       rng_seed,
-      stall_count: 0,
+      guardrails: GuardrailState::new(guard_config),
       sleep_delay_ticks,
       player_last_pos: HashMap::new(),
       was_awake: HashSet::new(),
@@ -185,6 +189,16 @@ impl Frame {
   }
 
   pub fn submit_intent(&mut self, intent: Intent) -> Result<(), IntentReject> {
+    if !self.intent_queues.contains_key(&intent.fwau) {
+      self.netcode.record_reject(intent.fwau, IntentReject::UnknownFwau);
+      return Err(IntentReject::UnknownFwau);
+    }
+
+    if !self.guardrails.allow_intent(intent.fwau) {
+      self.netcode.record_reject(intent.fwau, IntentReject::RateLimited);
+      return Err(IntentReject::RateLimited);
+    }
+
     if intent.verb == Verb::Move && intent.payload.len() >= 8 {
       let dx = f32::from_le_bytes(intent.payload[0..4].try_into().unwrap());
       let dy = f32::from_le_bytes(intent.payload[4..8].try_into().unwrap());
@@ -194,16 +208,22 @@ impl Frame {
       }
     }
 
-    let needs_rewind = match self.netcode.accept_intent(intent.clone()) {
+    let pending_cap = self.guardrails.config.pending_intent_cap;
+    let needs_rewind = match self.netcode.accept_intent(intent.clone(), pending_cap) {
       Ok(r) => r,
       Err(e) => {
+        if e == IntentReject::QueueFull {
+          self.guardrails.record_queue_full();
+        }
         self.netcode.record_reject(intent.fwau, e.clone());
         return Err(e);
       }
     };
 
     if needs_rewind {
-      self.rewind_replay(intent.tick);
+      if self.guardrails.allow_rewind() {
+        self.rewind_replay(intent.tick);
+      }
     }
     Ok(())
   }
@@ -382,6 +402,7 @@ impl Frame {
 
   pub fn step_once(&mut self, ledger: &mut EntropyLedger) {
     let tick = self.now();
+    self.guardrails.begin_tick(self.spec.ruleset.dt_ms);
 
     // Gather intents scheduled for this tick from netcode pending buffer
     let mut all_intents = self.netcode.pending_for_tick(tick);
@@ -445,7 +466,11 @@ impl Frame {
       .collect();
 
     self.island_mgr.rebuild_from_positions(&positions, &awake);
-    self.island_mgr.advance_all(None);
+    let budget = self.guardrails.config.step_budget_per_tick;
+    if self.island_mgr.advance_with_budget(None, budget, true) {
+      self.guardrails.record_budget_overrun();
+      self.guardrails.record_throttled_tick();
+    }
     self.island_mgr.collapse_observations();
   }
 
@@ -569,6 +594,11 @@ impl Frame {
         .collect(),
       island_profiler: Some(self.island_mgr.profiler.clone()),
       shard_id: self.shard_bounds.as_ref().map(|s| s.id),
+      guardrails: Some(
+        self
+          .guardrails
+          .report(self.island_mgr.profiler.within_budget),
+      ),
     }
   }
 
@@ -626,7 +656,7 @@ impl Frame {
   pub fn drain_elapsed(&mut self, elapsed: Duration) -> u32 {
     let steps = self.clock.drain(elapsed);
     if steps == self.clock.max_catchup && self.clock.acc >= self.clock.dt {
-      self.stall_count += 1;
+      self.guardrails.record_stall();
     }
     steps
   }

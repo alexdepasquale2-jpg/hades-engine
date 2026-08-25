@@ -62,7 +62,15 @@ cargo run -p tbc-gateway --release --example quic_client
 cargo test -p tbc-engine
 ```
 
-17 tests cover Δt, ledger, grid, beam budgets, islands profiler, shard overlap, netcode rewind, transport wire format, planner offers, and RWW publish.
+17 tests cover Δt, ledger, grid, beam budgets, islands profiler, shard overlap, netcode rewind, transport wire format, planner offers, RWW publish, and M8 guardrails.
+
+### M8 scale tests
+
+```bash
+cargo test -p tbc-engine scale_guardrails
+```
+
+Verifies 200-entity budget compliance (≥95% ticks within 35k step budget), intent-flood rate limiting, and unknown-FWAU rejection.
 
 ## Architecture
 
@@ -95,7 +103,7 @@ Transport
 | M5 NPMR + RWW + psi | Done |
 | M6 Island beam profiler | Done |
 | M7 Seamless multi-shard PMR + reincarnation | Done |
-| M8 Guardrails + scale test | Planned |
+| M8 Guardrails + scale test | Done |
 
 ## Rulesets
 

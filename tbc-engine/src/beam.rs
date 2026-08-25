@@ -63,10 +63,15 @@ impl ProbabilitySurface {
   }
 
   pub fn advance(&mut self, intent_action: Option<u8>) {
+    self.advance_with_depth(intent_action, self.depth);
+  }
+
+  pub fn advance_with_depth(&mut self, intent_action: Option<u8>, max_depth: u8) {
     let mut candidates: Vec<Branch> = Vec::new();
     self.steps_per_tick = 0;
+    let depth = max_depth.min(self.depth);
 
-    for d in 1..=self.depth {
+    for d in 1..=depth {
       candidates.clear();
       for branch in &self.beam {
         for a in 0..ACTION_FANOUT {

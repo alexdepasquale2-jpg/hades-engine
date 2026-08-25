@@ -34,6 +34,8 @@ pub enum IntentReject {
   TooFarAhead,
   SpeedHack,
   UnknownFwau,
+  RateLimited,
+  QueueFull,
 }
 
 /// Authoritative rewind-replay netcode state (spec §7).
@@ -88,7 +90,11 @@ impl NetcodeState {
   }
 
   /// Accept or buffer an intent. Late intents trigger rewind flag.
-  pub fn accept_intent(&mut self, intent: Intent) -> Result<bool, IntentReject> {
+  pub fn accept_intent(
+    &mut self,
+    intent: Intent,
+    pending_cap: usize,
+  ) -> Result<bool, IntentReject> {
     let fwau = intent.fwau;
     let t = intent.tick.0;
     let auth = self.auth_tick.0;
@@ -101,9 +107,16 @@ impl NetcodeState {
     }
 
     let bucket = self.pending.entry(fwau).or_default();
+    if bucket.len() >= pending_cap {
+      return Err(IntentReject::QueueFull);
+    }
     bucket.insert(t, intent);
 
     Ok(t < auth)
+  }
+
+  pub fn pending_count(&self, fwau: FwauId) -> usize {
+    self.pending.get(&fwau).map(|b| b.len()).unwrap_or(0)
   }
 
   pub fn pending_for_tick(&self, tick: Tick) -> Vec<Intent> {
@@ -168,7 +181,7 @@ mod tests {
 
     let fwau = FwauId(1);
     let needs_rewind = net
-      .accept_intent(dummy_intent(fwau, 8))
+      .accept_intent(dummy_intent(fwau, 8), 64)
       .expect("should accept");
     assert!(needs_rewind);
   }
@@ -178,7 +191,7 @@ mod tests {
     let mut net = NetcodeState::new();
     net.auth_tick = Tick(20);
     let err = net
-      .accept_intent(dummy_intent(FwauId(1), 1))
+      .accept_intent(dummy_intent(FwauId(1), 1), 64)
       .unwrap_err();
     assert_eq!(err, IntentReject::TooOld);
   }
