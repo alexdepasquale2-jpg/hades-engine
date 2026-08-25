@@ -11,7 +11,7 @@ use std::time::Duration;
 use tbc_engine::aum::AumCore;
 use tbc_engine::intent::{Intent, Verb};
 use tbc_engine::transport::{
-  decode_move_datagram, decode_reliable, encode_reliable, WireMessage,
+  drain_reliable, decode_move_datagram, encode_reliable, WireMessage,
 };
 use tbc_engine::types::{FwauId, IuocId, Tick, Vec3};
 use tokio::sync::Mutex;
@@ -117,22 +117,28 @@ async fn handle_connection(connection: quinn::Connection, state: Arc<GatewayStat
   let remote = connection.remote_address();
   info!("QUIC client connected from {}", remote);
 
-  // Reliable control stream
-  if let Ok((mut send, mut recv)) = connection.accept_bi().await {
-    let state_c = state.clone();
-    let conn = connection.clone();
-    tokio::spawn(async move {
-      loop {
-        if let Ok(Some(chunk)) = recv.read_chunk(8192, true).await {
-          if let Ok(msg) = decode_reliable(&chunk.bytes) {
-            handle_reliable(&state_c, &conn, &mut send, msg).await;
+  let state_bi = state.clone();
+  let conn_bi = connection.clone();
+  tokio::spawn(async move {
+    while let Ok((mut send, mut recv)) = conn_bi.accept_bi().await {
+      let state_c = state_bi.clone();
+      tokio::spawn(async move {
+        let mut buf = Vec::new();
+        loop {
+          match recv.read_chunk(8192, true).await {
+            Ok(Some(chunk)) => {
+              buf.extend_from_slice(&chunk.bytes);
+              for msg in drain_reliable(&mut buf) {
+                handle_reliable(&state_c, &mut send, msg).await;
+              }
+            }
+            Ok(None) => break,
+            Err(_) => break,
           }
-        } else {
-          break;
         }
-      }
-    });
-  }
+      });
+    }
+  });
 
   // Unreliable move datagrams
   let state_d = state.clone();
@@ -152,7 +158,6 @@ async fn handle_connection(connection: quinn::Connection, state: Arc<GatewayStat
 
 async fn handle_reliable(
   state: &Arc<GatewayState>,
-  conn: &quinn::Connection,
   send: &mut quinn::SendStream,
   msg: WireMessage,
 ) {
@@ -171,18 +176,14 @@ async fn handle_reliable(
         },
       );
       let snap = guard.frames[0].build_snapshot();
-      let reply = WireMessage::login_ok(
-        fwau.0,
-        iuoc.0,
-        serde_json::to_value(&snap).unwrap_or_default(),
-      );
+      let reply = WireMessage::login_ok(fwau.0, iuoc.0, snap.to_json_value());
       if let Ok(bytes) = encode_reliable(&reply) {
         let _ = send.write_all(&bytes).await;
       }
     }
     "move" => {
       if let (Some(fwau), Some(tick), Some(payload)) =
-        (msg.fwau, msg.tick, msg.payload.as_object())
+        (msg.fwau_u128(), msg.tick, msg.payload.as_object())
       {
         let dx = payload.get("dx").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
         let dy = payload.get("dy").and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
@@ -191,7 +192,7 @@ async fn handle_reliable(
       }
     }
     "snapshot" => {
-      if let Some(fwau) = msg.fwau {
+      if let Some(fwau) = msg.fwau_u128() {
         push_snapshot(state, FwauId(fwau), send).await;
       }
     }
@@ -220,7 +221,7 @@ async fn push_snapshot(
     }
   };
   if let Some(s) = snap {
-    let reply = WireMessage::snapshot(serde_json::to_value(&s).unwrap_or_default());
+    let reply = WireMessage::snapshot(s.to_json_value());
     if let Ok(bytes) = encode_reliable(&reply) {
       let _ = send.write_all(&bytes).await;
     }

@@ -61,7 +61,7 @@ impl RwwBus {
 
   pub fn publish_fwau_bound(&self, fwau: u128, frame: &str, at_tick: u64) {
     let payload = serde_json::json!({
-      "fwau": fwau,
+      "fwau": fwau.to_string(),
       "frame": frame,
       "event": "FwauBound"
     });
@@ -75,7 +75,7 @@ impl RwwBus {
 
   pub fn publish_handoff(&self, fwau: u128, from: &str, to: &str, at_tick: u64) {
     let payload = serde_json::json!({
-      "fwau": fwau,
+      "fwau": fwau.to_string(),
       "from": from,
       "to": to,
       "event": "Handoff"

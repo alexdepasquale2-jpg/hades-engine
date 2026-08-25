@@ -1,6 +1,6 @@
 //! Smoke test for TBC QUIC gateway — login + reliable move + datagram move.
 
-use quinn::{ClientConfig, Endpoint};
+use quinn::{ClientConfig, Endpoint, RecvStream};
 use rustls::pki_types::CertificateDer;
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -26,10 +26,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
   send.write_all(&encode_reliable(&WireMessage::login())?).await?;
   send.finish()?;
 
-  let chunk = recv.read_to_end(1_000_000).await?;
+  let chunk = read_one_frame(&mut recv).await?;
   let reply = decode_reliable(&chunk)?;
   assert_eq!(reply.kind, "login_ok");
-  let fwau = reply.fwau.expect("fwau in login_ok");
+  let fwau = reply.fwau_u128().expect("fwau in login_ok");
   let tick = reply
     .payload
     .get("snapshot")
@@ -44,7 +44,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .await?;
   move_send.finish()?;
 
-  let move_chunk = move_recv.read_to_end(1_000_000).await?;
+  let move_chunk = read_one_frame(&mut move_recv).await?;
   let move_reply = decode_reliable(&move_chunk)?;
   assert_eq!(move_reply.kind, "snapshot");
   println!("Reliable move → snapshot tick={:?}", move_reply.payload.get("tick"));
@@ -55,6 +55,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
   println!("QUIC transport smoke test OK");
   Ok(())
+}
+
+async fn read_one_frame(recv: &mut RecvStream) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+  let mut header = [0u8; 8];
+  recv.read_exact(&mut header).await?;
+  let len = u32::from_le_bytes(header[4..8].try_into()?) as usize;
+  let mut body = vec![0u8; len];
+  recv.read_exact(&mut body).await?;
+  let mut frame = Vec::with_capacity(8 + len);
+  frame.extend_from_slice(&header);
+  frame.extend_from_slice(&body);
+  Ok(frame)
 }
 
 fn client_config() -> ClientConfig {

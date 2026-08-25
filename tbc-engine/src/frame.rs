@@ -51,6 +51,28 @@ pub struct FrameSnapshot {
   pub shard_id: Option<u32>,
 }
 
+impl FrameSnapshot {
+  /// JSON-safe snapshot (u128 IDs as strings for wire transport).
+  pub fn to_json_value(&self) -> serde_json::Value {
+    serde_json::json!({
+      "frame_id": self.frame_id,
+      "frame_name": self.frame_name,
+      "ruleset_id": self.ruleset_id,
+      "tick": self.tick,
+      "entities": self.entities,
+      "fwau_count": self.fwau_count,
+      "ai_count": self.ai_count,
+      "corrections": self.corrections,
+      "rejects": self.rejects.iter().map(|r| serde_json::json!({
+        "fwau": r.fwau.to_string(),
+        "reason": r.reason,
+      })).collect::<Vec<_>>(),
+      "island_profiler": self.island_profiler,
+      "shard_id": self.shard_id,
+    })
+  }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RejectNotice {
   pub fwau: u128,
