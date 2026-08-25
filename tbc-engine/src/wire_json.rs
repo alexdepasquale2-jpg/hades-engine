@@ -20,7 +20,9 @@ where
             .as_u64()
             .map(|x| x as u128)
             .ok_or_else(|| serde::de::Error::custom("u128 number out of range")),
-        _ => Err(serde::de::Error::custom("expected string or number for u128")),
+        _ => Err(serde::de::Error::custom(
+            "expected string or number for u128",
+        )),
     }
 }
 

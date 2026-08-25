@@ -108,6 +108,7 @@ struct SpeakRequest {
     #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     text: String,
+    consent: Option<tbc_engine::consent_wire::WireConsentStamp>,
 }
 
 #[derive(Deserialize)]
@@ -364,6 +365,7 @@ struct AssistRequest {
     #[serde(with = "tbc_engine::wire_json::compat")]
     fwau: u128,
     target_entity: Option<u32>,
+    consent: Option<tbc_engine::consent_wire::WireConsentStamp>,
 }
 
 async fn assist(
@@ -383,7 +385,12 @@ async fn assist(
         generation: 0,
     });
     let mut guard = state.aum.lock().await;
-    Json(guard.assist(frame_idx, fwau, target))
+    Json(guard.assist(
+        frame_idx,
+        fwau,
+        target,
+        req.consent.map(|c| c.to_intent_stamp()),
+    ))
 }
 
 async fn attack(
@@ -641,7 +648,12 @@ async fn speak(
         .get(&fwau)
         .map(|s| s.frame_idx)
         .unwrap_or(0);
-    Json(guard.speak(frame_idx, fwau, &req.text))
+    Json(guard.speak(
+        frame_idx,
+        fwau,
+        &req.text,
+        req.consent.map(|c| c.to_intent_stamp()),
+    ))
 }
 
 async fn consent_grant(

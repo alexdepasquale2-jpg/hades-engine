@@ -9,6 +9,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tbc_engine::aum::AumCore;
+use tbc_engine::consent_wire::consent_from_payload;
 use tbc_engine::intent::{Intent, Verb};
 use tbc_engine::persist::SoulArchive;
 use tbc_engine::shard::ShardNodeConfig;
@@ -347,8 +348,9 @@ async fn handle_reliable(
                         index: idx as u32,
                         generation: 0,
                     });
+                let consent = consent_from_payload(&msg.payload);
                 let mut guard = state.aum.lock().await;
-                let result = guard.assist(frame_idx, FwauId(fwau), target);
+                let result = guard.assist(frame_idx, FwauId(fwau), target, consent);
                 drop(guard);
                 send_wire_result(send, "assist_result", fwau, &result).await;
                 push_snapshot(state, FwauId(fwau), send).await;
@@ -362,8 +364,9 @@ async fn handle_reliable(
                     .get("text")
                     .and_then(|v| v.as_str())
                     .unwrap_or("");
+                let consent = consent_from_payload(&msg.payload);
                 let mut guard = state.aum.lock().await;
-                let result = guard.speak(frame_idx, FwauId(fwau), text);
+                let result = guard.speak(frame_idx, FwauId(fwau), text, consent);
                 drop(guard);
                 send_wire_result(send, "speak_result", fwau, &result).await;
             }
@@ -384,6 +387,44 @@ async fn handle_reliable(
                 let result = guard.query_psi(frame_idx, FwauId(fwau), iuoc, scope);
                 drop(guard);
                 send_wire_result(send, "psi_result", fwau, &result).await;
+            }
+        }
+        "consent" => {
+            if let Some(fwau) = msg.fwau_u128() {
+                let helper_raw = msg
+                    .payload
+                    .get("helper_iuoc")
+                    .and_then(|v| {
+                        v.as_str()
+                            .and_then(|s| s.parse().ok())
+                            .or_else(|| v.as_u64().map(|n| n as u128))
+                    })
+                    .unwrap_or(0);
+                let scope = msg
+                    .payload
+                    .get("scope")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("assist");
+                let ttl = msg
+                    .payload
+                    .get("ttl_ticks")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(20_000);
+                let session = state.sessions.lock().await.get(&FwauId(fwau)).cloned();
+                let from = session.map(|s| s.iuoc).unwrap_or(IuocId(0));
+                let mut guard = state.aum.lock().await;
+                let result = guard.grant_consent(from, IuocId(helper_raw), scope, ttl);
+                drop(guard);
+                send_wire_result(
+                    send,
+                    "consent_result",
+                    fwau,
+                    &serde_json::json!({
+                        "granted": result.is_ok(),
+                        "pact": result.unwrap_or_else(|e| e),
+                    }),
+                )
+                .await;
             }
         }
         "blink" => {

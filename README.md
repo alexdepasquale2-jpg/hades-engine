@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M17 vertical slice** of the spec:
+**M1–M18 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -185,8 +185,9 @@ Transport
 | M15 Psi scopes + Speak + Consent | Done |
 | M16 Consent-gated assist + CI | Done |
 | M17 Typed client SDK (`tbc-sdk`) | Done |
+| M18 Consent-stamped wire intents | Done |
 
-## Client SDK (M17)
+## Client SDK (M17–M18)
 
 Rust crate `tbc-sdk` wraps the debug HTTP API and re-exports QUIC wire types:
 
@@ -197,7 +198,7 @@ cargo run -p tbc-sdk --example http_demo
 
 Browser: `web/sdk/tbc-client.js` — `TbcClient` class used by the debug UI.
 
-Wire message builders (`assist`, `speak`, `psi`, `handoff`, …) live in `tbc_engine::transport` for QUIC gateway clients.
+Wire message builders (`assist`, `speak`, `psi`, `handoff`, …) live in `tbc_engine::transport` for QUIC gateway clients. M18 adds optional `consent` stamps on `assist` / `speak` payloads and `wire_to_intent()` for `Verb::Assist` / `Verb::Speak`.
 
 ## Rulesets
 

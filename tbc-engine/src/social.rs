@@ -1,6 +1,8 @@
 //! M15 — Speak broadcasts and Consent pacts (spec §3 assist).
 
 use crate::aum::AumCore;
+use crate::consent_wire::verify_consent_stamp;
+use crate::intent::ConsentStamp;
 use crate::ledger::ResolvedAction;
 use crate::types::{FwauId, IuocId, Tick, Vec3};
 use serde::{Deserialize, Serialize};
@@ -20,7 +22,13 @@ pub struct SpeakResult {
 }
 
 impl AumCore {
-    pub fn speak(&mut self, frame_idx: usize, fwau: FwauId, text: &str) -> SpeakResult {
+    pub fn speak(
+        &mut self,
+        frame_idx: usize,
+        fwau: FwauId,
+        text: &str,
+        wire_consent: Option<ConsentStamp>,
+    ) -> SpeakResult {
         let ruleset_id = self.frames[frame_idx].spec.ruleset.id.clone();
         let enabled = self.frames[frame_idx].spec.ruleset.verbs.speak.enabled;
         let range_m = self.frames[frame_idx].spec.ruleset.verbs.speak.range_m;
@@ -50,8 +58,21 @@ impl AumCore {
                 .unwrap_or(Vec3::ZERO)
         };
 
+        let (tick, helper_iuoc) = {
+            let frame = &self.frames[frame_idx];
+            (frame.now().0, frame.iuoc_for_fwau(fwau))
+        };
+        if let (Some(stamp), Some(helper)) = (wire_consent.as_ref(), helper_iuoc) {
+            if !verify_consent_stamp(self, helper, stamp, tick) {
+                return SpeakResult {
+                    heard: false,
+                    listeners: 0,
+                    message: "Speak refused — consent stamp invalid or expired".into(),
+                };
+            }
+        }
+
         let frame = &mut self.frames[frame_idx];
-        let tick = frame.now().0;
         let mut listeners = 0usize;
 
         for entity in frame.world.all_entities() {

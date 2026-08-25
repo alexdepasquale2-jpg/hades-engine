@@ -1,7 +1,9 @@
 //! M16 — consent-gated assist intents (spec §3).
 
 use crate::aum::AumCore;
+use crate::consent_wire::verify_consent_stamp;
 use crate::gameplay::{distance2, nearest_interactable};
+use crate::intent::ConsentStamp;
 use crate::ledger::ResolvedAction;
 use crate::types::{Entity, FwauId, Tick, Vec3};
 use serde::{Deserialize, Serialize};
@@ -24,6 +26,7 @@ impl AumCore {
         frame_idx: usize,
         fwau: FwauId,
         target: Option<Entity>,
+        wire_consent: Option<ConsentStamp>,
     ) -> AssistResult {
         let policy = self.frames[frame_idx].spec.ruleset.verbs.assist.clone();
         if !policy.enabled {
@@ -112,10 +115,17 @@ impl AumCore {
             )
         };
 
+        let now_tick = self.frames.get(frame_idx).map(|f| f.now().0).unwrap_or(0);
         let consent_verified = if is_ai && policy.ai_practice {
             true
-        } else if let (Some(target_id), Some(helper_id)) = (target_iuoc, helper_iuoc) {
-            self.has_consent(target_id, helper_id, "assist")
+        } else if let Some(helper_id) = helper_iuoc {
+            if let Some(stamp) = wire_consent {
+                verify_consent_stamp(self, helper_id, &stamp, now_tick)
+            } else if let Some(target_id) = target_iuoc {
+                self.has_consent(target_id, helper_id, "assist")
+            } else {
+                false
+            }
         } else {
             false
         };
@@ -240,7 +250,7 @@ mod tests {
         aum.frames[2].spawn_demo_world(4);
         let iuoc = aum.iuoc.create_soul();
         let fwau = aum.bind_player(2, iuoc, Vec3::new(50.0, 0.0, 0.0)).unwrap();
-        let res = aum.assist(2, fwau, None);
+        let res = aum.assist(2, fwau, None, None);
         assert!(res.hit);
         assert!(res.consent_verified);
     }
@@ -266,12 +276,18 @@ mod tests {
                 a.hp = 40.0;
             }
         }
-        let denied = aum.assist(0, helper_fwau, Some(target_entity));
+        let denied = aum.assist(0, helper_fwau, Some(target_entity), None);
         assert!(!denied.hit);
         assert!(!denied.consent_verified);
         aum.grant_consent(target, helper, "assist", 50_000)
             .expect("grant");
-        let ok = aum.assist(0, helper_fwau, Some(target_entity));
+        let expires = aum.frames[0].now().0 + 50_000;
+        let stamp = crate::intent::ConsentStamp {
+            target: target.0,
+            scope: "assist".into(),
+            expires_tick: expires,
+        };
+        let ok = aum.assist(0, helper_fwau, Some(target_entity), Some(stamp));
         assert!(ok.hit);
         assert!(ok.consent_verified);
         assert!(ok.healed > 0.0);

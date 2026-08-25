@@ -42,7 +42,7 @@ fn speak_heard_nearby_ai() {
     let fwau = aum
         .bind_player(0, iuoc, Vec3::new(-175.0, 0.0, 0.0))
         .unwrap();
-    let res = aum.speak(0, fwau, "The seam remembers.");
+    let res = aum.speak(0, fwau, "The seam remembers.", None);
     assert!(res.heard);
     assert!(res.listeners >= 1);
     assert!(!aum.frames[0].recent_speaks.is_empty());
@@ -68,7 +68,7 @@ fn speak_disabled_when_ruleset_off() {
     aum.frames[0].spec.ruleset.verbs.speak.enabled = false;
     let iuoc = aum.iuoc.create_soul();
     let fwau = aum.bind_player(0, iuoc, Vec3::ZERO).unwrap();
-    let res = aum.speak(0, fwau, "muted");
+    let res = aum.speak(0, fwau, "muted", None);
     assert!(!res.heard);
     assert!(res.message.contains("disabled"));
 }

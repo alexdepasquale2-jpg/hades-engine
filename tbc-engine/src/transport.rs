@@ -1,6 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use crate::consent_wire::{consent_from_payload, WireConsentStamp};
+use crate::intent::{Intent, Verb};
+use crate::types::{FwauId, Tick};
+
 pub const WIRE_MAGIC: u32 = 0x54424301;
 
 /// Length-prefixed JSON envelope for QUIC reliable streams (spec §10).
@@ -68,21 +72,33 @@ impl WireMessage {
         }
     }
 
-    pub fn assist(fwau: u128, target_entity: Option<u32>) -> Self {
+    pub fn assist(
+        fwau: u128,
+        target_entity: Option<u32>,
+        consent: Option<&WireConsentStamp>,
+    ) -> Self {
+        let mut payload = serde_json::json!({ "target_entity": target_entity });
+        if let Some(c) = consent {
+            payload["consent"] = serde_json::to_value(c).unwrap_or(Value::Null);
+        }
         Self {
             kind: "assist".into(),
             tick: None,
             fwau: Some(fwau.to_string()),
-            payload: serde_json::json!({ "target_entity": target_entity }),
+            payload,
         }
     }
 
-    pub fn speak(fwau: u128, text: &str) -> Self {
+    pub fn speak(fwau: u128, text: &str, consent: Option<&WireConsentStamp>) -> Self {
+        let mut payload = serde_json::json!({ "text": text });
+        if let Some(c) = consent {
+            payload["consent"] = serde_json::to_value(c).unwrap_or(Value::Null);
+        }
         Self {
             kind: "speak".into(),
             tick: None,
             fwau: Some(fwau.to_string()),
-            payload: serde_json::json!({ "text": text }),
+            payload,
         }
     }
 
@@ -220,9 +236,67 @@ pub fn decode_move_datagram(buf: &[u8]) -> Option<(u128, u64, f32, f32)> {
     Some((fwau, tick, dx, dy))
 }
 
+/// Build consent-stamped intents from reliable wire messages (M18).
+pub fn wire_to_intent(msg: &WireMessage, seq: u32) -> Option<Intent> {
+    let fwau_raw = msg.fwau_u128()?;
+    let fwau = FwauId(fwau_raw);
+    let tick = Tick(msg.tick.unwrap_or(0));
+    let consent = consent_from_payload(&msg.payload);
+    match msg.kind.as_str() {
+        "assist" => {
+            let idx = msg
+                .payload
+                .get("target_entity")
+                .and_then(|v| v.as_u64())
+                .map(|n| n as u32)
+                .unwrap_or(0);
+            Some(Intent {
+                fwau,
+                tick,
+                seq,
+                verb: Verb::Assist,
+                payload: idx.to_le_bytes().to_vec(),
+                consent,
+                checksum: 0,
+            })
+        }
+        "speak" => {
+            let text = msg
+                .payload
+                .get("text")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            Some(Intent {
+                fwau,
+                tick,
+                seq,
+                verb: Verb::Speak,
+                payload: text.into_bytes(),
+                consent,
+                checksum: 0,
+            })
+        }
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn assist_wire_includes_consent() {
+        let stamp = WireConsentStamp {
+            target: 99,
+            scope: "assist".into(),
+            expires_tick: 1000,
+        };
+        let msg = WireMessage::assist(42, Some(7), Some(&stamp));
+        let intent = wire_to_intent(&msg, 1).expect("intent");
+        assert_eq!(intent.verb, Verb::Assist);
+        assert!(intent.consent.is_some());
+    }
 
     #[test]
     fn roundtrip_reliable() {

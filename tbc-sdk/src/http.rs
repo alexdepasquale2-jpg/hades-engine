@@ -3,6 +3,7 @@
 use crate::error::SdkError;
 use crate::types::{ConsentResponse, LoginResponse, StatusResponse};
 use tbc_engine::assist::AssistResult;
+use tbc_engine::consent_wire::WireConsentStamp;
 use tbc_engine::frame::FrameSnapshot;
 use tbc_engine::gameplay::{AttackResult, InteractResult};
 use tbc_engine::psi::PsiResponse;
@@ -99,28 +100,40 @@ impl TbcHttpClient {
     }
 
     pub async fn interact(&self, fwau: u128) -> Result<InteractResult, SdkError> {
-        self.post("/api/interact", serde_json::json!({ "fwau": id_json(fwau) }))
-            .await
+        self.post(
+            "/api/interact",
+            serde_json::json!({ "fwau": id_json(fwau) }),
+        )
+        .await
     }
 
     pub async fn assist(
         &self,
         fwau: u128,
         target_entity: Option<u32>,
+        consent: Option<WireConsentStamp>,
     ) -> Result<AssistResult, SdkError> {
-        self.post(
-            "/api/assist",
-            serde_json::json!({ "fwau": id_json(fwau), "target_entity": target_entity }),
-        )
-        .await
+        let mut body = serde_json::json!({
+            "fwau": id_json(fwau),
+            "target_entity": target_entity,
+        });
+        if let Some(c) = consent {
+            body["consent"] = serde_json::to_value(c).unwrap_or_default();
+        }
+        self.post("/api/assist", body).await
     }
 
-    pub async fn speak(&self, fwau: u128, text: &str) -> Result<SpeakResult, SdkError> {
-        self.post(
-            "/api/speak",
-            serde_json::json!({ "fwau": id_json(fwau), "text": text }),
-        )
-        .await
+    pub async fn speak(
+        &self,
+        fwau: u128,
+        text: &str,
+        consent: Option<WireConsentStamp>,
+    ) -> Result<SpeakResult, SdkError> {
+        let mut body = serde_json::json!({ "fwau": id_json(fwau), "text": text });
+        if let Some(c) = consent {
+            body["consent"] = serde_json::to_value(c).unwrap_or_default();
+        }
+        self.post("/api/speak", body).await
     }
 
     pub async fn psi(&self, fwau: u128, scope: &str) -> Result<PsiResponse, SdkError> {

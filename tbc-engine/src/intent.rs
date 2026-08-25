@@ -8,6 +8,7 @@ pub enum Verb {
     Look,
     Interact,
     Attack,
+    Assist,
     Speak,
     PsiQuery,
     Consent,

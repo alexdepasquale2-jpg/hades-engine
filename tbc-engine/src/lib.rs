@@ -6,6 +6,7 @@
 pub mod assist;
 pub mod beam;
 pub mod clock;
+pub mod consent_wire;
 pub mod crdt_props;
 pub mod ecs;
 pub mod frame;
