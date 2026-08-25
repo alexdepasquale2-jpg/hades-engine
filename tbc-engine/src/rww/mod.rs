@@ -59,8 +59,8 @@ impl RwwBus {
     Self::open(RwwConfig::from_env())
   }
 
-  pub fn open(config: RwwConfig) -> Self {
-    let store = Arc::new(MemoryStore::new());
+  /// Share the in-memory store across processes in tests or single-host multi-node dev.
+  pub fn with_store(config: RwwConfig, store: Arc<MemoryStore>) -> Self {
     if let Some(url) = config.nats_url.clone() {
       match nats::NatsBridge::connect(&url, &config.stream_name, store.clone()) {
         Ok(bridge) => {
@@ -91,6 +91,11 @@ impl RwwBus {
         connected: false,
       },
     }
+  }
+
+  pub fn open(config: RwwConfig) -> Self {
+    let store = Arc::new(MemoryStore::new());
+    Self::with_store(config, store)
   }
 
   pub fn status(&self) -> RwwStatus {
@@ -136,6 +141,12 @@ impl RwwBus {
       "event": "Handoff"
     });
     self.publish("rww.handoff", payload.to_string().as_bytes(), at_tick, true);
+  }
+
+  /// M11: spatial PMR shard crossing (multi-node).
+  pub fn publish_shard_cross(&self, event: &crate::shard::ShardCrossEvent) {
+    let payload = serde_json::to_vec(event).unwrap_or_default();
+    self.publish("rww.shard.cross", &payload, event.tick, true);
   }
 }
 

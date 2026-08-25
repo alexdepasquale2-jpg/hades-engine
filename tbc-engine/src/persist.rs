@@ -127,6 +127,40 @@ impl SoulArchive {
     Ok(out)
   }
 
+  pub fn load_soul(&self, iuoc: IuocId) -> Result<Option<IUOC>, PersistError> {
+    let id_str = iuoc.0.to_string();
+    let mut stmt = self
+      .conn
+      .prepare(
+        "SELECT id, quality, incarnations, bound_fwau, consent_json, prefs_json
+         FROM souls WHERE id = ?1",
+      )
+      .map_err(PersistError::Sqlite)?;
+    let mut rows = stmt.query(params![id_str]).map_err(PersistError::Sqlite)?;
+    if let Some(row) = rows.next().map_err(PersistError::Sqlite)? {
+      let id_str: String = row.get(0).map_err(PersistError::Sqlite)?;
+      let id = IuocId(parse_u128(&id_str)?);
+      let quality = row.get::<_, f32>(1).map_err(PersistError::Sqlite)?;
+      let incarnations: u32 = row.get(2).map_err(PersistError::Sqlite)?;
+      let bound_raw: Option<String> = row.get(3).map_err(PersistError::Sqlite)?;
+      let bound_fwau = bound_raw
+        .map(|s| parse_u128(&s).map(FwauId))
+        .transpose()?;
+      let consent_json: String = row.get(4).map_err(PersistError::Sqlite)?;
+      let prefs_json: String = row.get(5).map_err(PersistError::Sqlite)?;
+      Ok(Some(IUOC {
+        id,
+        quality: crate::types::QualityScalar::clamped(quality),
+        incarnations,
+        bound_fwau,
+        consent: serde_json::from_str(&consent_json).unwrap_or_default(),
+        prefs: serde_json::from_str(&prefs_json).unwrap_or_default(),
+      }))
+    } else {
+      Ok(None)
+    }
+  }
+
   pub fn load_packets(&self) -> Result<HashMap<IuocId, Vec<ExperiencePacket>>, PersistError> {
     let mut stmt = self
       .conn

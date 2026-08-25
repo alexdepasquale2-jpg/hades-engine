@@ -138,6 +138,19 @@ impl IuocRegistry {
     }
   }
 
+  pub fn refresh_soul_from_archive(&mut self, iuoc: IuocId) -> Result<bool, PersistError> {
+    if let Some(archive) = &self.archive {
+      if let Some(soul) = archive.load_soul(iuoc)? {
+        self.souls.insert(soul.id, soul);
+        Ok(true)
+      } else {
+        Ok(false)
+      }
+    } else {
+      Ok(self.souls.contains_key(&iuoc))
+    }
+  }
+
   pub fn create_soul(&mut self) -> IuocId {
     let id = IuocId(ulid::Ulid::new().0);
     self.souls.insert(
@@ -194,6 +207,16 @@ impl IuocRegistry {
     self.fwau_sessions.insert(fwau_id, fwau);
     self.persist_soul(iuoc);
     Ok(fwau_id)
+  }
+
+  /// Release a live FWAU without merging an experience packet (M11 shard cross).
+  pub fn release_live_fwau(&mut self, fwau_id: FwauId) -> Option<IuocId> {
+    let fwau = self.fwau_sessions.remove(&fwau_id)?;
+    if let Some(soul) = self.souls.get_mut(&fwau.iuoc_id) {
+      soul.bound_fwau = None;
+      self.persist_soul(fwau.iuoc_id);
+    }
+    Some(fwau.iuoc_id)
   }
 
   pub fn merge_fwau(

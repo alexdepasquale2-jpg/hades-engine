@@ -11,6 +11,18 @@ let moveVec = { dx: 0, dy: 0 };
 let clientTick = 0;
 let isNpmr = false;
 let shardId = null;
+let nodeDistributed = false;
+
+function updateNodeStatus(node) {
+  if (!node) return;
+  nodeDistributed = node.distributed;
+  document.getElementById("node-mode").textContent = node.mode || "cluster";
+  document.getElementById("node-shard").textContent =
+    node.shard_id != null ? `shard-${node.shard_id}` : "all";
+  document.querySelectorAll(".npmr-only").forEach((el) => {
+    el.style.display = nodeDistributed ? "none" : "";
+  });
+}
 
 const canvas = document.getElementById("world");
 const ctx = canvas.getContext("2d");
@@ -341,6 +353,7 @@ async function pollStatus() {
       document.getElementById("archive-packets").textContent = data.archive.packets;
     }
     updateRww(data.rww, null);
+    updateNodeStatus(data.node);
   } catch (_) {}
 }
 

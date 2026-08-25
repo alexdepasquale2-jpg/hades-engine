@@ -10,7 +10,7 @@
   <div class="app">
     <header>
       <h1>The Big Computer</h1>
-      <p class="subtitle">TBC Engine · M10 NATS RWW</p>
+      <p class="subtitle">TBC Engine · M11 multi-node PMR</p>
     </header>
 
     <aside class="panel">
@@ -37,6 +37,13 @@
         <div class="stat"><span>Δt</span><strong id="dt">50 ms</strong></div>
         <div id="correction-flash" class="correction hidden">Correction applied</div>
         <div id="reject-flash" class="reject hidden"></div>
+      </section>
+
+      <section>
+        <h2>Node (M11)</h2>
+        <div class="stat"><span>Mode</span><strong id="node-mode">cluster</strong></div>
+        <div class="stat"><span>Shard node</span><strong id="node-shard">—</strong></div>
+        <p class="hint">Set TBC_SHARD_ID=0|1 for shard nodes on ports 6020/6021 · shared NATS RWW</p>
       </section>
 
       <section>
@@ -73,9 +80,9 @@
 
       <section>
         <h2>Frames (handoff)</h2>
-        <button id="btn-npmr">Enter NPMR-Academy</button>
-        <button id="btn-pmr">Return to PMR-Prime</button>
-        <p class="hint">Walk east (→) past x≈0 to cross PMR shard boundary (M7)</p>
+        <button id="btn-npmr" class="npmr-only">Enter NPMR-Academy</button>
+        <button id="btn-pmr" class="npmr-only">Return to PMR-Prime</button>
+        <p class="hint">Walk east (→) past x≈0 to cross PMR shard boundary · M11 uses RWW for multi-node</p>
       </section>
 
       <section>

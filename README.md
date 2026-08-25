@@ -4,7 +4,7 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 
 ## What this repo implements
 
-**M1–M9 vertical slice** of the spec:
+**M1–M11 vertical slice** of the spec:
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -17,12 +17,12 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `IslandManager` | §7 M6 | ~40 islands, observe-collapse, step profiler |
 | `GuardrailState` | M8 | Rate limits, beam budget throttle, stall telemetry |
 | `NetcodeState` | §7 | Snapshot ring N=8, rewind-replay, corrections |
-| `ShardBounds` | §10 M7 | PMR shard-00 / shard-01, overlap strip handoff |
+| `ShardBounds` | §10 M7/M11 | PMR shard-00 / shard-01, overlap strip, RWW cross events |
 | `Reincarnation planner` | §11 M7 | K=5 ranked offers, accept + rebirth |
 | `RwwBus` | §9 M10 | In-memory + NATS JetStream (`TBC_RWW` stream) |
 | `transport` | §10 | Framed JSON reliable + 36-byte move datagrams |
 | `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
-| Debug server | §10 | HTTP + WebSocket on port **6014** |
+| Debug server | §10 | HTTP + WebSocket — cluster **6014**, shard-00 **6020**, shard-01 **6021** |
 | QUIC gateway | §10 | `tbc-gateway` on **4433** (quinn) |
 
 ## Quick start
@@ -44,6 +44,23 @@ cargo run -p tbc-server --release
 ```
 
 Without `TBC_NATS_URL`, RWW stays in-memory (dev mode).
+
+### Multi-node PMR (M11)
+
+Run two shard processes sharing the same archive and NATS RWW:
+
+```bash
+docker run --rm -p 4222:4222 nats:2.10 -js
+export TBC_NATS_URL=nats://127.0.0.1:4222
+export TBC_ARCHIVE_PATH=data/tbc-archive.db
+
+TBC_SHARD_ID=0 cargo run -p tbc-server --release   # http://127.0.0.1:6020
+TBC_SHARD_ID=1 cargo run -p tbc-server --release   # http://127.0.0.1:6021
+```
+
+Walk east on shard-00 past the seam; the soul unbinds locally and rebinds on shard-01 via `rww.shard.cross`. Override port with `TBC_PORT`.
+
+Default cluster mode (no `TBC_SHARD_ID`) keeps in-process handoff on port **6014**.
 
 1. **Partition FWAU** — bind a new IUOC avatar on PMR shard-00 (west)
 2. **Resume soul** — after restart, resume the same IUOC from the archive (stored in browser localStorage)
@@ -72,11 +89,12 @@ cargo run -p tbc-gateway --release --example quic_client
 cargo test -p tbc-engine
 ```
 
-24 tests cover core simulation, M8 guardrails, M9 archive hydration, and M10 RWW (memory mode).
+26 tests cover core simulation, M8 guardrails, M9 archive hydration, M10 RWW, and M11 shard crossing.
 
 ```bash
 cargo test -p tbc-engine scale_guardrails
 cargo test -p tbc-engine persist_hydrate
+cargo test -p tbc-engine shard_multinode
 # With NATS running:
 cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
@@ -89,8 +107,8 @@ AUM_Core
 ├── IUOCRegistry         hydrated from archive on boot
 ├── EntropyLedger        private quality scalar (S)
 ├── RwwBus               memory cache + NATS JetStream replication (M10)
-├── Frame PMR shard-00   Δt=50ms, x ∈ [-500, 50]
-├── Frame PMR shard-01   Δt=50ms, x ∈ [-50, 500]
+├── Frame PMR shard-00   Δt=50ms, x ∈ [-500, 50]  (or standalone node TBC_SHARD_ID=0)
+├── Frame PMR shard-01   Δt=50ms, x ∈ [-50, 500]  (or standalone node TBC_SHARD_ID=1)
 │   ├── IslandManager    clustering, observe-collapse, profiler
 │   ├── GuardrailState   rate limits + budget enforcement
 │   ├── NetcodeState     snapshot ring, rewind-replay
@@ -117,7 +135,7 @@ Transport
 | M8 Guardrails + scale test | Done |
 | M9 Persistent IUOC + experience archive | Done |
 | M10 Real RWW (NATS JetStream) | Done |
-| M11 Multi-node PMR sharding | Planned |
+| M11 Multi-node PMR sharding | Done |
 | M12 Production transport + ops | Planned |
 | M13 Gameplay depth (ruleset-driven) | Planned |
 

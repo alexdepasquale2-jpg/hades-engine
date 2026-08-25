@@ -19,6 +19,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tbc_engine::intent::{Intent, Verb};
+use tbc_engine::shard::ShardNodeConfig;
 use tbc_engine::types::{FwauId, IuocId, Tick, Vec3};
 use tokio::sync::Mutex;
 use tower_http::cors::CorsLayer;
@@ -49,6 +50,7 @@ struct StatusResponse {
   guardrails: Option<tbc_engine::guardrails::GuardrailReport>,
   archive: Option<tbc_engine::persist::ArchiveStats>,
   rww: tbc_engine::rww::RwwStatus,
+  node: tbc_engine::shard::ShardNodeStatus,
 }
 
 #[derive(Serialize)]
@@ -125,10 +127,17 @@ async fn main() {
   let genesis = *blake3::hash(b"TBC-GENESIS-M2").as_bytes();
   let archive_path = std::env::var("TBC_ARCHIVE_PATH").unwrap_or_else(|_| "data/tbc-archive.db".into());
   let archive = SoulArchive::open(&archive_path).expect("open soul archive");
-  info!("Soul archive at {} ({} souls)", archive.path(), archive.stats().map(|s| s.souls).unwrap_or(0));
-  let aum = AumCore::boot_cluster_with_archive(genesis, archive).expect("boot cluster");
+  let node = ShardNodeConfig::from_env();
   info!(
-    "RWW backend={} connected={}",
+    "Soul archive at {} ({} souls)",
+    archive.path(),
+    archive.stats().map(|s| s.souls).unwrap_or(0)
+  );
+  let aum = AumCore::boot_node_with_archive(genesis, archive, node.clone()).expect("boot node");
+  info!(
+    "Node mode={} shard={:?} RWW backend={} connected={}",
+    aum.node.label(),
+    aum.node.shard_id,
     aum.rww.status().backend,
     aum.rww.status().connected
   );
@@ -140,9 +149,16 @@ async fn main() {
 
   {
     let mut guard = state.aum.lock().await;
-    guard.frames[0].spawn_demo_world(40);
-    guard.frames[1].spawn_demo_world(40);
-    guard.frames[2].spawn_demo_world(8);
+    for (i, frame) in guard.frames.iter_mut().enumerate() {
+      let count = if node.distributed {
+        40
+      } else if i < 2 {
+        40
+      } else {
+        8
+      };
+      frame.spawn_demo_world(count);
+    }
   }
 
   let app = Router::new()
@@ -168,8 +184,8 @@ async fn main() {
     sim_loop(sim_state).await;
   });
 
-  let addr = SocketAddr::from(([0, 0, 0, 0], 6014));
-  info!("TBC server listening on http://{}", addr);
+  let addr = SocketAddr::from(([0, 0, 0, 0], listen_port(&node)));
+  info!("TBC server listening on http://{} (mode={})", addr, node.label());
   let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
   axum::serve(listener, app).await.unwrap();
 }
@@ -203,13 +219,32 @@ async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
     guardrails: frame.guardrails.clone(),
     archive: guard.archive_stats(),
     rww: guard.rww.status(),
+    node: guard.node_status(),
   })
+}
+
+fn listen_port(node: &ShardNodeConfig) -> u16 {
+  if let Ok(port) = std::env::var("TBC_PORT") {
+    return port.parse().unwrap_or(6014);
+  }
+  match node.shard_id {
+    Some(0) => 6020,
+    Some(1) => 6021,
+    _ => 6014,
+  }
+}
+
+fn spawn_pos_for_node(node: &ShardNodeConfig) -> Vec3 {
+  match node.shard_id {
+    Some(1) => Vec3::new(80.0, 0.0, 0.0),
+    _ => Vec3::new(-80.0, 0.0, 0.0),
+  }
 }
 
 async fn login(State(state): State<Arc<AppState>>) -> Json<LoginResponse> {
   let mut guard = state.aum.lock().await;
   let iuoc = guard.iuoc.create_soul();
-  let pos = Vec3::new(-80.0, 0.0, 0.0);
+  let pos = spawn_pos_for_node(&guard.node);
 
   let fwau = guard.bind_player(0, iuoc, pos).unwrap();
   let frame_name = guard.frames[0].spec.ruleset.id.clone();
@@ -246,7 +281,7 @@ struct ResumeQuery {
 async fn resume(State(state): State<Arc<AppState>>, Query(q): Query<ResumeQuery>) -> Json<LoginResponse> {
   let iuoc = IuocId(q.iuoc);
   let mut guard = state.aum.lock().await;
-  let pos = Vec3::new(-80.0, 0.0, 0.0);
+  let pos = spawn_pos_for_node(&guard.node);
   let result = guard.resume_soul(iuoc, 0, pos);
   match result {
     Ok(fwau) => {
@@ -639,12 +674,33 @@ async fn sim_loop(state: Arc<AppState>) {
         guard.run_frame_ticks(i, steps);
       }
     }
+    let inbound = guard.process_inbound_shard_crosses();
     let handoffs = guard.process_shard_handoffs();
     drop(guard);
 
-    if !handoffs.is_empty() {
+    if !inbound.is_empty() || !handoffs.is_empty() {
       let mut sessions = state.sessions.lock().await;
+      for (fwau, iuoc) in inbound {
+        sessions.insert(
+          fwau,
+          SessionInfo {
+            iuoc,
+            fwau,
+            frame_idx: 0,
+          },
+        );
+        info!("Inbound shard cross bound fwau={} iuoc={}", fwau.0, iuoc.0);
+      }
       for (old_fwau, new_fwau, to_idx) in handoffs {
+        if new_fwau.0 == 0 {
+          if let Some(info) = sessions.remove(&old_fwau) {
+            info!(
+              "Outbound shard cross: iuoc={} left shard (connect target shard node)",
+              info.iuoc.0
+            );
+          }
+          continue;
+        }
         if let Some(info) = sessions.remove(&old_fwau) {
           sessions.insert(
             new_fwau,
