@@ -1,0 +1,127 @@
+{
+  "id": "custom.combat_fx_elemental_burst_frost",
+  "version": 1,
+  "title": "Combat FX \u2014 Frost shatter on hit",
+  "description": "Apply graphical combat profile \"elemental_burst_frost\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.damage": 32,
+    "verbs.attack.harm_entropy": 0.42,
+    "presentation.combat": {
+      "profile_id": "elemental_burst_frost",
+      "title": "Frost shatter on hit",
+      "tags": [
+        "elemental",
+        "readable"
+      ],
+      "hit_stop_ms": 48,
+      "screen_shake": 0.2,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.28,
+      "flash_color": "#ccf0ff",
+      "flash_ms": 50,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "ice_shard",
+          "count": 28,
+          "spread_deg": 80,
+          "speed": 4.0,
+          "lifetime_ms": 320,
+          "color": "#aeeeff",
+          "blend": "alpha"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.86,
+        "follow_lag": 0.07,
+        "fov_kick_deg": 1.0
+      },
+      "audio": {
+        "impact": "hit_glass",
+        "stinger": "crystal_ting"
+      },
+      "haptics": {
+        "light_ms": 11,
+        "heavy_ms": 24,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "hit_confirm_ping",
+        "enemy_hit_flash"
+      ],
+      "effects": [
+        {
+          "id": "slow_motes",
+          "trigger": "on_hit",
+          "duration_ms": 350,
+          "intensity": 0.55,
+          "visual": "floating_ice_motes"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "elemental_burst_frost",
+    "title": "Frost shatter on hit",
+    "tags": [
+      "elemental",
+      "readable"
+    ],
+    "hit_stop_ms": 48,
+    "screen_shake": 0.2,
+    "zoom_punch": 0.03,
+    "chromatic_aberration": 0.28,
+    "flash_color": "#ccf0ff",
+    "flash_ms": 50,
+    "damage_number_style": "minimal",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "ice_shard",
+        "count": 28,
+        "spread_deg": 80,
+        "speed": 4.0,
+        "lifetime_ms": 320,
+        "color": "#aeeeff",
+        "blend": "alpha"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.86,
+      "follow_lag": 0.07,
+      "fov_kick_deg": 1.0
+    },
+    "audio": {
+      "impact": "hit_glass",
+      "stinger": "crystal_ting"
+    },
+    "haptics": {
+      "light_ms": 11,
+      "heavy_ms": 24,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "hit_confirm_ping",
+      "enemy_hit_flash"
+    ],
+    "effects": [
+      {
+        "id": "slow_motes",
+        "trigger": "on_hit",
+        "duration_ms": 350,
+        "intensity": 0.55,
+        "visual": "floating_ice_motes"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: elemental_burst_frost. Tags: elemental, readable.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

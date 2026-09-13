@@ -1,0 +1,124 @@
+{
+  "id": "custom.combat_fx_stamina_rhythm",
+  "version": 1,
+  "title": "Combat FX \u2014 Stamina rhythm pulses",
+  "description": "Apply graphical combat profile \"stamina_rhythm\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.stamina_cost": 11,
+    "presentation.combat": {
+      "profile_id": "stamina_rhythm",
+      "title": "Stamina rhythm pulses",
+      "tags": [
+        "stamina",
+        "feedback"
+      ],
+      "hit_stop_ms": 24,
+      "screen_shake": 0.1,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.06,
+      "flash_color": "#ffaa44",
+      "flash_ms": 18,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "stamina_ring",
+          "count": 12,
+          "spread_deg": 360,
+          "speed": 2.0,
+          "lifetime_ms": 220,
+          "color": "#ff9944",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.92,
+        "follow_lag": 0.05,
+        "fov_kick_deg": 0.4
+      },
+      "audio": {
+        "impact": "hit_tock"
+      },
+      "haptics": {
+        "light_ms": 7,
+        "heavy_ms": 14,
+        "pattern": "double"
+      },
+      "satisfiers": [
+        "stamina_tick",
+        "hit_confirm_ping"
+      ],
+      "effects": [
+        {
+          "id": "stamina_bar_pulse",
+          "trigger": "on_hit",
+          "duration_ms": 120,
+          "intensity": 0.5,
+          "visual": "hud_stamina_glow"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "stamina_rhythm",
+    "title": "Stamina rhythm pulses",
+    "tags": [
+      "stamina",
+      "feedback"
+    ],
+    "hit_stop_ms": 24,
+    "screen_shake": 0.1,
+    "zoom_punch": 0.02,
+    "chromatic_aberration": 0.06,
+    "flash_color": "#ffaa44",
+    "flash_ms": 18,
+    "damage_number_style": "minimal",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "stamina_ring",
+        "count": 12,
+        "spread_deg": 360,
+        "speed": 2.0,
+        "lifetime_ms": 220,
+        "color": "#ff9944",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.92,
+      "follow_lag": 0.05,
+      "fov_kick_deg": 0.4
+    },
+    "audio": {
+      "impact": "hit_tock"
+    },
+    "haptics": {
+      "light_ms": 7,
+      "heavy_ms": 14,
+      "pattern": "double"
+    },
+    "satisfiers": [
+      "stamina_tick",
+      "hit_confirm_ping"
+    ],
+    "effects": [
+      {
+        "id": "stamina_bar_pulse",
+        "trigger": "on_hit",
+        "duration_ms": 120,
+        "intensity": 0.5,
+        "visual": "hud_stamina_glow"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: stamina_rhythm. Tags: stamina, feedback.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

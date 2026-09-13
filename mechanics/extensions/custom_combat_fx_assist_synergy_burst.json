@@ -1,0 +1,131 @@
+{
+  "id": "custom.combat_fx_assist_synergy_burst",
+  "version": 1,
+  "title": "Combat FX \u2014 Assist synergy burst",
+  "description": "Apply graphical combat profile \"assist_synergy_burst\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.assist.enabled": true,
+    "verbs.assist.range_m": 8,
+    "presentation.combat": {
+      "profile_id": "assist_synergy_burst",
+      "title": "Assist synergy burst",
+      "tags": [
+        "coop",
+        "assist",
+        "social"
+      ],
+      "hit_stop_ms": 30,
+      "screen_shake": 0.14,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.12,
+      "flash_color": "#88ffcc",
+      "flash_ms": 35,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "link_spark",
+          "count": 20,
+          "spread_deg": 360,
+          "speed": 3.0,
+          "lifetime_ms": 300,
+          "color": "#66ddaa",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.9,
+        "follow_lag": 0.06,
+        "fov_kick_deg": 0.7
+      },
+      "audio": {
+        "impact": "hit_harmony",
+        "stinger": "assist_link"
+      },
+      "haptics": {
+        "light_ms": 8,
+        "heavy_ms": 18,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "stamina_tick",
+        "lifesteal_stream",
+        "hit_confirm_ping"
+      ],
+      "effects": [
+        {
+          "id": "ally_beam",
+          "trigger": "on_hit",
+          "duration_ms": 250,
+          "intensity": 0.55,
+          "visual": "beam_between_party_on_assist_window"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "assist_synergy_burst",
+    "title": "Assist synergy burst",
+    "tags": [
+      "coop",
+      "assist",
+      "social"
+    ],
+    "hit_stop_ms": 30,
+    "screen_shake": 0.14,
+    "zoom_punch": 0.03,
+    "chromatic_aberration": 0.12,
+    "flash_color": "#88ffcc",
+    "flash_ms": 35,
+    "damage_number_style": "arcade_pop",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "link_spark",
+        "count": 20,
+        "spread_deg": 360,
+        "speed": 3.0,
+        "lifetime_ms": 300,
+        "color": "#66ddaa",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.9,
+      "follow_lag": 0.06,
+      "fov_kick_deg": 0.7
+    },
+    "audio": {
+      "impact": "hit_harmony",
+      "stinger": "assist_link"
+    },
+    "haptics": {
+      "light_ms": 8,
+      "heavy_ms": 18,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "stamina_tick",
+      "lifesteal_stream",
+      "hit_confirm_ping"
+    ],
+    "effects": [
+      {
+        "id": "ally_beam",
+        "trigger": "on_hit",
+        "duration_ms": 250,
+        "intensity": 0.55,
+        "visual": "beam_between_party_on_assist_window"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: assist_synergy_burst. Tags: coop, assist, social.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

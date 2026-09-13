@@ -1,0 +1,129 @@
+{
+  "id": "custom.combat_fx_screen_kick_punch",
+  "version": 1,
+  "title": "Combat FX \u2014 Screen-kick knockback",
+  "description": "Apply graphical combat profile \"screen_kick_punch\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.harm_entropy": 0.58,
+    "motion.max_speed": 6.8,
+    "presentation.combat": {
+      "profile_id": "screen_kick_punch",
+      "title": "Screen-kick knockback",
+      "tags": [
+        "knockback",
+        "juice"
+      ],
+      "hit_stop_ms": 44,
+      "screen_shake": 0.35,
+      "zoom_punch": 0.09,
+      "chromatic_aberration": 0.2,
+      "flash_color": "#ffffff",
+      "flash_ms": 22,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        {
+          "id": "speed_line",
+          "count": 20,
+          "spread_deg": 15,
+          "speed": 8.0,
+          "lifetime_ms": 100,
+          "color": "#ffffff",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.75,
+        "follow_lag": 0.12,
+        "fov_kick_deg": 2.2
+      },
+      "audio": {
+        "impact": "hit_knockback",
+        "whoosh": "body_launch"
+      },
+      "haptics": {
+        "light_ms": 12,
+        "heavy_ms": 35,
+        "pattern": "double"
+      },
+      "satisfiers": [
+        "knockback_pulse",
+        "enemy_hit_flash",
+        "hit_confirm_ping"
+      ],
+      "effects": [
+        {
+          "id": "camera_offset_impulse",
+          "trigger": "on_hit",
+          "duration_ms": 180,
+          "intensity": 0.6,
+          "visual": "camera_nudge_attack_dir"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "screen_kick_punch",
+    "title": "Screen-kick knockback",
+    "tags": [
+      "knockback",
+      "juice"
+    ],
+    "hit_stop_ms": 44,
+    "screen_shake": 0.35,
+    "zoom_punch": 0.09,
+    "chromatic_aberration": 0.2,
+    "flash_color": "#ffffff",
+    "flash_ms": 22,
+    "damage_number_style": "arcade_pop",
+    "trail_style": "motion_streak",
+    "impact_particles": [
+      {
+        "id": "speed_line",
+        "count": 20,
+        "spread_deg": 15,
+        "speed": 8.0,
+        "lifetime_ms": 100,
+        "color": "#ffffff",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.75,
+      "follow_lag": 0.12,
+      "fov_kick_deg": 2.2
+    },
+    "audio": {
+      "impact": "hit_knockback",
+      "whoosh": "body_launch"
+    },
+    "haptics": {
+      "light_ms": 12,
+      "heavy_ms": 35,
+      "pattern": "double"
+    },
+    "satisfiers": [
+      "knockback_pulse",
+      "enemy_hit_flash",
+      "hit_confirm_ping"
+    ],
+    "effects": [
+      {
+        "id": "camera_offset_impulse",
+        "trigger": "on_hit",
+        "duration_ms": 180,
+        "intensity": 0.6,
+        "visual": "camera_nudge_attack_dir"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: screen_kick_punch. Tags: knockback, juice.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

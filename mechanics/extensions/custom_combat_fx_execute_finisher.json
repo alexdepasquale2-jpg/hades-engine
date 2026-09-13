@@ -1,0 +1,150 @@
+{
+  "id": "custom.combat_fx_execute_finisher",
+  "version": 1,
+  "title": "Combat FX \u2014 Execute / overkill finisher",
+  "description": "Apply graphical combat profile \"execute_finisher\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.damage": 50,
+    "verbs.attack.harm_entropy": 0.7,
+    "death.rewind_s": 2,
+    "presentation.combat": {
+      "profile_id": "execute_finisher",
+      "title": "Execute / overkill finisher",
+      "tags": [
+        "finisher",
+        "boss",
+        "cinematic"
+      ],
+      "hit_stop_ms": 110,
+      "screen_shake": 0.55,
+      "zoom_punch": 0.12,
+      "chromatic_aberration": 0.3,
+      "flash_color": "#ff2244",
+      "flash_ms": 80,
+      "damage_number_style": "boss_ticker",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        {
+          "id": "finisher_bloom",
+          "count": 64,
+          "spread_deg": 360,
+          "speed": 5.0,
+          "lifetime_ms": 520,
+          "color": "#ff4466",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.65,
+        "follow_lag": 0.18,
+        "fov_kick_deg": 3.5
+      },
+      "audio": {
+        "impact": "execute_slash",
+        "sub_bass": "boom_finisher",
+        "stinger": "choir_stab_short"
+      },
+      "haptics": {
+        "light_ms": 20,
+        "heavy_ms": 80,
+        "pattern": "rumble_tail"
+      },
+      "satisfiers": [
+        "execute_banner",
+        "enemy_hit_flash",
+        "knockback_pulse",
+        "ground_scorch_decal"
+      ],
+      "effects": [
+        {
+          "id": "letterbox_pulse",
+          "trigger": "on_execute",
+          "duration_ms": 400,
+          "intensity": 0.5,
+          "visual": "cinematic_bars"
+        },
+        {
+          "id": "slowmo_tail",
+          "trigger": "on_kill",
+          "duration_ms": 600,
+          "intensity": 0.35,
+          "visual": "time_scale_ramp"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "execute_finisher",
+    "title": "Execute / overkill finisher",
+    "tags": [
+      "finisher",
+      "boss",
+      "cinematic"
+    ],
+    "hit_stop_ms": 110,
+    "screen_shake": 0.55,
+    "zoom_punch": 0.12,
+    "chromatic_aberration": 0.3,
+    "flash_color": "#ff2244",
+    "flash_ms": 80,
+    "damage_number_style": "boss_ticker",
+    "trail_style": "motion_streak",
+    "impact_particles": [
+      {
+        "id": "finisher_bloom",
+        "count": 64,
+        "spread_deg": 360,
+        "speed": 5.0,
+        "lifetime_ms": 520,
+        "color": "#ff4466",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.65,
+      "follow_lag": 0.18,
+      "fov_kick_deg": 3.5
+    },
+    "audio": {
+      "impact": "execute_slash",
+      "sub_bass": "boom_finisher",
+      "stinger": "choir_stab_short"
+    },
+    "haptics": {
+      "light_ms": 20,
+      "heavy_ms": 80,
+      "pattern": "rumble_tail"
+    },
+    "satisfiers": [
+      "execute_banner",
+      "enemy_hit_flash",
+      "knockback_pulse",
+      "ground_scorch_decal"
+    ],
+    "effects": [
+      {
+        "id": "letterbox_pulse",
+        "trigger": "on_execute",
+        "duration_ms": 400,
+        "intensity": 0.5,
+        "visual": "cinematic_bars"
+      },
+      {
+        "id": "slowmo_tail",
+        "trigger": "on_kill",
+        "duration_ms": 600,
+        "intensity": 0.35,
+        "visual": "time_scale_ramp"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: execute_finisher. Tags: finisher, boss, cinematic.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "id": "custom.combat_fx_parry_spark",
+  "version": 1,
+  "title": "Combat FX \u2014 Parry satisfaction",
+  "description": "Apply graphical combat profile \"parry_spark\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.stamina_cost": 14,
+    "tightness": 0.96,
+    "presentation.combat": {
+      "profile_id": "parry_spark",
+      "title": "Parry satisfaction",
+      "tags": [
+        "defense",
+        "skill",
+        "stylized"
+      ],
+      "hit_stop_ms": 65,
+      "screen_shake": 0.12,
+      "zoom_punch": 0.06,
+      "chromatic_aberration": 0.4,
+      "flash_color": "#ffffff",
+      "flash_ms": 30,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "parry_ring",
+          "count": 1,
+          "spread_deg": 0,
+          "speed": 0,
+          "lifetime_ms": 200,
+          "color": "#ffffff",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.95,
+        "follow_lag": 0.04,
+        "fov_kick_deg": 1.8
+      },
+      "audio": {
+        "impact": "parry_clang",
+        "stinger": "parry_stinger_high"
+      },
+      "haptics": {
+        "light_ms": 6,
+        "heavy_ms": 40,
+        "pattern": "double"
+      },
+      "satisfiers": [
+        "parry_ring",
+        "hit_confirm_ping",
+        "stamina_tick"
+      ],
+      "effects": [
+        {
+          "id": "time_dilation_micro",
+          "trigger": "on_parry",
+          "duration_ms": 90,
+          "intensity": 0.75,
+          "visual": "time_scale_0.2_global_short"
+        },
+        {
+          "id": "counter_window_glow",
+          "trigger": "on_parry",
+          "duration_ms": 500,
+          "intensity": 0.6,
+          "visual": "ui_counter_ready"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "parry_spark",
+    "title": "Parry satisfaction",
+    "tags": [
+      "defense",
+      "skill",
+      "stylized"
+    ],
+    "hit_stop_ms": 65,
+    "screen_shake": 0.12,
+    "zoom_punch": 0.06,
+    "chromatic_aberration": 0.4,
+    "flash_color": "#ffffff",
+    "flash_ms": 30,
+    "damage_number_style": "minimal",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "parry_ring",
+        "count": 1,
+        "spread_deg": 0,
+        "speed": 0,
+        "lifetime_ms": 200,
+        "color": "#ffffff",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.95,
+      "follow_lag": 0.04,
+      "fov_kick_deg": 1.8
+    },
+    "audio": {
+      "impact": "parry_clang",
+      "stinger": "parry_stinger_high"
+    },
+    "haptics": {
+      "light_ms": 6,
+      "heavy_ms": 40,
+      "pattern": "double"
+    },
+    "satisfiers": [
+      "parry_ring",
+      "hit_confirm_ping",
+      "stamina_tick"
+    ],
+    "effects": [
+      {
+        "id": "time_dilation_micro",
+        "trigger": "on_parry",
+        "duration_ms": 90,
+        "intensity": 0.75,
+        "visual": "time_scale_0.2_global_short"
+      },
+      {
+        "id": "counter_window_glow",
+        "trigger": "on_parry",
+        "duration_ms": 500,
+        "intensity": 0.6,
+        "visual": "ui_counter_ready"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: parry_spark. Tags: defense, skill, stylized.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

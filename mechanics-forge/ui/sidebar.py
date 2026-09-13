@@ -18,20 +18,21 @@ from mech_lib.ruleset_io import (
 )
 
 
-def render_sidebar() -> str:
-    """Returns selected workspace page id."""
-    st.markdown("### Mechanics Forge")
+def render_sidebar(panel=None) -> str:
+    """Returns selected workspace page id. Pass a column/container to embed outside st.sidebar."""
+    ui = panel if panel is not None else st.sidebar
+    ui.markdown("### Mechanics Forge")
     ids = list_ruleset_ids()
     draft = st.session_state.draft
 
     dirty = history.is_dirty(draft)
     chip = "forge-chip-dirty" if dirty else "forge-chip-clean"
     label = "Unsaved changes" if dirty else "Synced with baseline"
-    st.markdown(f'<span class="forge-chip {chip}">{label}</span>', unsafe_allow_html=True)
+    ui.markdown(f'<span class="forge-chip {chip}">{label}</span>', unsafe_allow_html=True)
 
-    st.markdown("#### Ruleset file")
-    pick = st.selectbox("Open", ids or ["pmr.v1"], key="sidebar_open", label_visibility="collapsed")
-    c1, c2 = st.columns(2)
+    ui.markdown("#### Ruleset file")
+    pick = ui.selectbox("Open", ids or ["pmr.v1"], key="sidebar_open", label_visibility="collapsed")
+    c1, c2 = ui.columns(2)
     if c1.button("Load", use_container_width=True):
         loaded = load_ruleset_by_id(pick)
         st.session_state.draft = loaded
@@ -48,7 +49,7 @@ def render_sidebar() -> str:
             st.session_state.save_ok = draft.get("id")
             st.rerun()
 
-    u1, u2, u3 = st.columns(3)
+    u1, u2, u3 = ui.columns(3)
     if u1.button("Undo", disabled=not history.can_undo(), use_container_width=True):
         prev = history.undo()
         if prev is not None:
@@ -67,23 +68,23 @@ def render_sidebar() -> str:
             st.rerun()
 
     if st.session_state.get("save_ok"):
-        st.success(f"Saved `{st.session_state.pop('save_ok')}`")
+        ui.success(f"Saved `{st.session_state.pop('save_ok')}`")
     if st.session_state.get("save_errors"):
         for e in st.session_state.pop("save_errors"):
-            st.error(e)
+            ui.error(e)
 
-    with st.expander("New from template"):
-        base = st.selectbox("Template", ids or ["pmr.v1"], key="sidebar_tpl")
-        new_id = st.text_input("Id", value="pmr.custom.v1", key="sidebar_new_id")
-        new_title = st.text_input("Title", value="Custom ruleset", key="sidebar_new_title")
-        if st.button("Create draft"):
+    with ui.expander("New from template"):
+        base = ui.selectbox("Template", ids or ["pmr.v1"], key="sidebar_tpl")
+        new_id = ui.text_input("Id", value="pmr.custom.v1", key="sidebar_new_id")
+        new_title = ui.text_input("Title", value="Custom ruleset", key="sidebar_new_title")
+        if ui.button("Create draft"):
             created = blank_from_template(base, new_id, new_title)
             st.session_state.draft = created
             history.set_baseline(created)
             st.rerun()
 
-    preset = st.selectbox("Quick preset patch", ["—"] + preset_names(), key="sidebar_preset")
-    if preset != "—" and st.button("Apply preset to draft"):
+    preset = ui.selectbox("Quick preset patch", ["—"] + preset_names(), key="sidebar_preset")
+    if preset != "—" and ui.button("Apply preset to draft"):
         st.session_state.draft = apply_patches(draft, PRESETS[preset])
         history.push(st.session_state.draft)
         st.rerun()
@@ -91,9 +92,9 @@ def render_sidebar() -> str:
     base = st.session_state.baseline_draft
     if base:
         n = count_diff(base, draft)
-        st.caption(f"{n} field(s) differ from baseline")
+        ui.caption(f"{n} field(s) differ from baseline")
 
-    st.divider()
+    ui.divider()
     _pages = {
         "workbench": "Workbench",
         "compare": "Compare",
@@ -101,7 +102,7 @@ def render_sidebar() -> str:
         "extensions": "Extensions",
         "source": "JSON source",
     }
-    return st.radio(
+    return ui.radio(
         "Workspace",
         list(_pages.keys()),
         format_func=lambda k: _pages[k],

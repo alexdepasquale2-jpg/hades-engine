@@ -1,0 +1,565 @@
+{
+  "version": 1,
+  "title": "Combat presentation & satisfaction catalog",
+  "description": "Graphical and game-feel profiles for attack/combat. Apply via Mechanics Forge extensions or merge presentation.combat into rulesets.",
+  "presets": [
+    {
+      "profile_id": "crisp_hitstop",
+      "title": "Crisp hit-stop",
+      "tags": ["melee", "readable", "arcade"],
+      "hit_stop_ms": 52,
+      "screen_shake": 0.22,
+      "zoom_punch": 0.04,
+      "chromatic_aberration": 0.12,
+      "flash_color": "#ffe8d0",
+      "flash_ms": 35,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "spark_fan", "count": 18, "spread_deg": 42, "speed": 4.2, "lifetime_ms": 180, "color": "#ffcc66", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.85, "follow_lag": 0.08, "fov_kick_deg": 1.2 },
+      "audio": { "impact": "hit_metal_short", "whoosh": "swing_light", "sub_bass": "thump_tight" },
+      "haptics": { "light_ms": 12, "heavy_ms": 28, "pattern": "double" },
+      "satisfiers": ["hit_confirm_ping", "enemy_hit_flash", "knockback_pulse"],
+      "effects": [
+        { "id": "frame_hold", "trigger": "on_hit", "duration_ms": 52, "intensity": 0.9, "visual": "time_scale_0", "notes": "Local hit-stop; scale time for attacker + victim" }
+      ]
+    },
+    {
+      "profile_id": "heavy_impact",
+      "title": "Heavy impact",
+      "tags": ["melee", "weighty", "boss"],
+      "hit_stop_ms": 78,
+      "screen_shake": 0.48,
+      "zoom_punch": 0.08,
+      "chromatic_aberration": 0.22,
+      "flash_color": "#ff6633",
+      "flash_ms": 55,
+      "damage_number_style": "crit_gold",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        { "id": "debris_chunk", "count": 24, "spread_deg": 55, "speed": 3.0, "lifetime_ms": 420, "color": "#aa8866", "blend": "alpha" },
+        { "id": "shock_dust", "count": 40, "spread_deg": 360, "speed": 1.5, "lifetime_ms": 600, "color": "#998877", "blend": "screen" }
+      ],
+      "camera": { "shake_decay": 0.72, "follow_lag": 0.14, "fov_kick_deg": 2.5 },
+      "audio": { "impact": "hit_bone_heavy", "whoosh": "swing_heavy", "sub_bass": "boom_low", "stinger": "impact_stinger_brass" },
+      "haptics": { "light_ms": 18, "heavy_ms": 55, "pattern": "rumble_tail" },
+      "satisfiers": ["hit_confirm_ping", "enemy_hit_flash", "knockback_pulse", "ground_scorch_decal"],
+      "effects": [
+        { "id": "radial_blur", "trigger": "on_hit", "duration_ms": 120, "intensity": 0.45, "visual": "radial_blur_pulse" },
+        { "id": "squash_target", "trigger": "on_hit", "duration_ms": 90, "intensity": 0.35, "visual": "sprite_squash_stretch" }
+      ]
+    },
+    {
+      "profile_id": "slash_ribbon",
+      "title": "Slash ribbon trails",
+      "tags": ["melee", "stylized", "fast"],
+      "hit_stop_ms": 28,
+      "screen_shake": 0.15,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.08,
+      "flash_color": "#aaddff",
+      "flash_ms": 25,
+      "damage_number_style": "combo_stack",
+      "trail_style": "slash_ribbon",
+      "impact_particles": [
+        { "id": "arc_spark", "count": 12, "spread_deg": 18, "speed": 6.0, "lifetime_ms": 140, "color": "#88ccff", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.9, "follow_lag": 0.05, "fov_kick_deg": 0.8 },
+      "audio": { "impact": "hit_slice", "whoosh": "swing_ribbon" },
+      "haptics": { "light_ms": 8, "heavy_ms": 16, "pattern": "single" },
+      "satisfiers": ["combo_counter", "hit_confirm_ping"],
+      "effects": [
+        { "id": "ribbon_mesh", "trigger": "windup_start", "duration_ms": 220, "intensity": 0.7, "visual": "mesh_trail_weapon_arc" }
+      ]
+    },
+    {
+      "profile_id": "psi_afterimage",
+      "title": "Psi afterimage combat",
+      "tags": ["psi", "dream", "stylized"],
+      "hit_stop_ms": 40,
+      "screen_shake": 0.18,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.35,
+      "flash_color": "#cc88ff",
+      "flash_ms": 40,
+      "damage_number_style": "entropy_glyph",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        { "id": "glyph_shatter", "count": 16, "spread_deg": 360, "speed": 2.2, "lifetime_ms": 500, "color": "#bb66ff", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.88, "follow_lag": 0.1, "fov_kick_deg": 1.0 },
+      "audio": { "impact": "hit_psi_chime", "stinger": "entropy_tick" },
+      "haptics": { "light_ms": 10, "heavy_ms": 22, "pattern": "double" },
+      "satisfiers": ["entropy_spark", "enemy_hit_flash"],
+      "effects": [
+        { "id": "echo_ghost", "trigger": "on_hit", "duration_ms": 280, "intensity": 0.5, "visual": "duplicate_sprite_fade" }
+      ]
+    },
+    {
+      "profile_id": "elemental_burst_fire",
+      "title": "Fire burst on hit",
+      "tags": ["elemental", "aoe", "satisfying"],
+      "hit_stop_ms": 35,
+      "screen_shake": 0.25,
+      "zoom_punch": 0.05,
+      "chromatic_aberration": 0.15,
+      "flash_color": "#ff4400",
+      "flash_ms": 45,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "ember_wake",
+      "impact_particles": [
+        { "id": "ember_spray", "count": 32, "spread_deg": 70, "speed": 3.5, "lifetime_ms": 380, "color": "#ff6622", "blend": "add" },
+        { "id": "heat_haze", "count": 8, "spread_deg": 360, "speed": 0.4, "lifetime_ms": 700, "color": "#ffaa44", "blend": "screen" }
+      ],
+      "camera": { "shake_decay": 0.8, "follow_lag": 0.09, "fov_kick_deg": 1.4 },
+      "audio": { "impact": "hit_fire_pop", "sub_bass": "whoosh_flame" },
+      "haptics": { "light_ms": 14, "heavy_ms": 30, "pattern": "rumble_tail" },
+      "satisfiers": ["aoe_ring_expand", "enemy_hit_flash", "ground_scorch_decal"],
+      "effects": [
+        { "id": "burn_overlay", "trigger": "on_hit", "duration_ms": 400, "intensity": 0.4, "visual": "rim_light_orange" }
+      ]
+    },
+    {
+      "profile_id": "elemental_burst_frost",
+      "title": "Frost shatter on hit",
+      "tags": ["elemental", "readable"],
+      "hit_stop_ms": 48,
+      "screen_shake": 0.2,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.28,
+      "flash_color": "#ccf0ff",
+      "flash_ms": 50,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "ice_shard", "count": 28, "spread_deg": 80, "speed": 4.0, "lifetime_ms": 320, "color": "#aeeeff", "blend": "alpha" }
+      ],
+      "camera": { "shake_decay": 0.86, "follow_lag": 0.07, "fov_kick_deg": 1.0 },
+      "audio": { "impact": "hit_glass", "stinger": "crystal_ting" },
+      "haptics": { "light_ms": 11, "heavy_ms": 24, "pattern": "single" },
+      "satisfiers": ["hit_confirm_ping", "enemy_hit_flash"],
+      "effects": [
+        { "id": "slow_motes", "trigger": "on_hit", "duration_ms": 350, "intensity": 0.55, "visual": "floating_ice_motes" }
+      ]
+    },
+    {
+      "profile_id": "parry_spark",
+      "title": "Parry satisfaction",
+      "tags": ["defense", "skill", "stylized"],
+      "hit_stop_ms": 65,
+      "screen_shake": 0.12,
+      "zoom_punch": 0.06,
+      "chromatic_aberration": 0.4,
+      "flash_color": "#ffffff",
+      "flash_ms": 30,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "parry_ring", "count": 1, "spread_deg": 0, "speed": 0, "lifetime_ms": 200, "color": "#ffffff", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.95, "follow_lag": 0.04, "fov_kick_deg": 1.8 },
+      "audio": { "impact": "parry_clang", "stinger": "parry_stinger_high" },
+      "haptics": { "light_ms": 6, "heavy_ms": 40, "pattern": "double" },
+      "satisfiers": ["parry_ring", "hit_confirm_ping", "stamina_tick"],
+      "effects": [
+        { "id": "time_dilation_micro", "trigger": "on_parry", "duration_ms": 90, "intensity": 0.75, "visual": "time_scale_0.2_global_short" },
+        { "id": "counter_window_glow", "trigger": "on_parry", "duration_ms": 500, "intensity": 0.6, "visual": "ui_counter_ready" }
+      ]
+    },
+    {
+      "profile_id": "execute_finisher",
+      "title": "Execute / overkill finisher",
+      "tags": ["finisher", "boss", "cinematic"],
+      "hit_stop_ms": 110,
+      "screen_shake": 0.55,
+      "zoom_punch": 0.12,
+      "chromatic_aberration": 0.3,
+      "flash_color": "#ff2244",
+      "flash_ms": 80,
+      "damage_number_style": "boss_ticker",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        { "id": "finisher_bloom", "count": 64, "spread_deg": 360, "speed": 5.0, "lifetime_ms": 520, "color": "#ff4466", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.65, "follow_lag": 0.18, "fov_kick_deg": 3.5 },
+      "audio": { "impact": "execute_slash", "sub_bass": "boom_finisher", "stinger": "choir_stab_short" },
+      "haptics": { "light_ms": 20, "heavy_ms": 80, "pattern": "rumble_tail" },
+      "satisfiers": ["execute_banner", "enemy_hit_flash", "knockback_pulse", "ground_scorch_decal"],
+      "effects": [
+        { "id": "letterbox_pulse", "trigger": "on_execute", "duration_ms": 400, "intensity": 0.5, "visual": "cinematic_bars" },
+        { "id": "slowmo_tail", "trigger": "on_kill", "duration_ms": 600, "intensity": 0.35, "visual": "time_scale_ramp" }
+      ]
+    },
+    {
+      "profile_id": "ranged_tracer",
+      "title": "Ranged hit tracer",
+      "tags": ["ranged", "readable"],
+      "hit_stop_ms": 18,
+      "screen_shake": 0.08,
+      "zoom_punch": 0.01,
+      "chromatic_aberration": 0.05,
+      "flash_color": "#ffffaa",
+      "flash_ms": 20,
+      "damage_number_style": "minimal",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        { "id": "muzzle_flash", "count": 6, "spread_deg": 25, "speed": 2.0, "lifetime_ms": 80, "color": "#ffee88", "blend": "add" },
+        { "id": "impact_puff", "count": 10, "spread_deg": 40, "speed": 1.8, "lifetime_ms": 150, "color": "#cccccc", "blend": "alpha" }
+      ],
+      "camera": { "shake_decay": 0.92, "follow_lag": 0.06, "fov_kick_deg": 0.5 },
+      "audio": { "impact": "hit_projectile", "whoosh": "shot_crack" },
+      "haptics": { "light_ms": 6, "heavy_ms": 12, "pattern": "single" },
+      "satisfiers": ["hit_confirm_ping"],
+      "effects": [
+        { "id": "beam_trail", "trigger": "windup_start", "duration_ms": 120, "intensity": 0.8, "visual": "line_tracer_to_target" }
+      ]
+    },
+    {
+      "profile_id": "aoe_shockwave",
+      "title": "AoE shockwave ring",
+      "tags": ["aoe", "crowd", "satisfying"],
+      "hit_stop_ms": 42,
+      "screen_shake": 0.38,
+      "zoom_punch": 0.07,
+      "chromatic_aberration": 0.18,
+      "flash_color": "#eeddff",
+      "flash_ms": 40,
+      "damage_number_style": "combo_stack",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "ring_particle", "count": 48, "spread_deg": 360, "speed": 6.5, "lifetime_ms": 400, "color": "#bbaaff", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.78, "follow_lag": 0.11, "fov_kick_deg": 2.0 },
+      "audio": { "impact": "aoe_thump", "sub_bass": "shockwave_sub" },
+      "haptics": { "light_ms": 15, "heavy_ms": 45, "pattern": "rumble_tail" },
+      "satisfiers": ["aoe_ring_expand", "combo_counter", "enemy_hit_flash"],
+      "effects": [
+        { "id": "expanding_ring", "trigger": "on_aoe_peak", "duration_ms": 350, "intensity": 0.85, "visual": "shader_ring_world_space" },
+        { "id": "hit_stop_stagger", "trigger": "on_hit", "duration_ms": 30, "intensity": 0.4, "visual": "stagger_enemies_in_radius" }
+      ]
+    },
+    {
+      "profile_id": "lifesteal_glow",
+      "title": "Lifesteal feedback stream",
+      "tags": ["sustain", "assist", "readable"],
+      "hit_stop_ms": 22,
+      "screen_shake": 0.1,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.1,
+      "flash_color": "#66ff99",
+      "flash_ms": 30,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "heal_mote", "count": 14, "spread_deg": 60, "speed": 2.5, "lifetime_ms": 450, "color": "#44ff88", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.9, "follow_lag": 0.06, "fov_kick_deg": 0.6 },
+      "audio": { "impact": "hit_wet", "stinger": "heal_chime" },
+      "haptics": { "light_ms": 9, "heavy_ms": 18, "pattern": "single" },
+      "satisfiers": ["lifesteal_stream", "stamina_tick", "hit_confirm_ping"],
+      "effects": [
+        { "id": "hp_stream", "trigger": "on_hit", "duration_ms": 500, "intensity": 0.65, "visual": "particles_target_to_attacker" }
+      ]
+    },
+    {
+      "profile_id": "combo_roulette",
+      "title": "Combo escalation roulette",
+      "tags": ["combo", "arcade", "retention"],
+      "hit_stop_ms": 32,
+      "screen_shake": 0.2,
+      "zoom_punch": 0.04,
+      "chromatic_aberration": 0.14,
+      "flash_color": "#ffee00",
+      "flash_ms": 28,
+      "damage_number_style": "combo_stack",
+      "trail_style": "slash_ribbon",
+      "impact_particles": [
+        { "id": "combo_spark", "count": 8, "spread_deg": 30, "speed": 5.0, "lifetime_ms": 160, "color": "#ffdd00", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.87, "follow_lag": 0.07, "fov_kick_deg": 1.1 },
+      "audio": { "impact": "hit_punchy", "stinger": "combo_tier_up" },
+      "haptics": { "light_ms": 8, "heavy_ms": 20, "pattern": "double" },
+      "satisfiers": ["combo_counter", "hit_confirm_ping", "entropy_spark"],
+      "effects": [
+        { "id": "tier_color_shift", "trigger": "on_hit", "duration_ms": 200, "intensity": 0.5, "visual": "ui_combo_palette_step" },
+        { "id": "pitch_rise", "trigger": "on_hit", "duration_ms": 0, "intensity": 0.7, "visual": "audio_pitch_combo_stack" }
+      ]
+    },
+    {
+      "profile_id": "boss_phase_break",
+      "title": "Boss phase break spectacle",
+      "tags": ["boss", "cinematic", "phase"],
+      "hit_stop_ms": 95,
+      "screen_shake": 0.62,
+      "zoom_punch": 0.1,
+      "chromatic_aberration": 0.45,
+      "flash_color": "#ff00aa",
+      "flash_ms": 100,
+      "damage_number_style": "boss_ticker",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        { "id": "phase_crack", "count": 80, "spread_deg": 360, "speed": 7.0, "lifetime_ms": 800, "color": "#ff66cc", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.6, "follow_lag": 0.2, "fov_kick_deg": 4.0 },
+      "audio": { "impact": "boss_break", "sub_bass": "phase_drop", "stinger": "orchestra_hit" },
+      "haptics": { "light_ms": 25, "heavy_ms": 90, "pattern": "rumble_tail" },
+      "satisfiers": ["boss_phase_crack", "execute_banner", "aoe_ring_expand"],
+      "effects": [
+        { "id": "arena_dim", "trigger": "on_hit", "duration_ms": 1200, "intensity": 0.55, "visual": "vignette_pulse" },
+        { "id": "sprite_crack_overlay", "trigger": "on_crit", "duration_ms": 2000, "intensity": 0.8, "visual": "boss_shell_fracture" }
+      ]
+    },
+    {
+      "profile_id": "screen_kick_punch",
+      "title": "Screen-kick knockback",
+      "tags": ["knockback", "juice"],
+      "hit_stop_ms": 44,
+      "screen_shake": 0.35,
+      "zoom_punch": 0.09,
+      "chromatic_aberration": 0.2,
+      "flash_color": "#ffffff",
+      "flash_ms": 22,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        { "id": "speed_line", "count": 20, "spread_deg": 15, "speed": 8.0, "lifetime_ms": 100, "color": "#ffffff", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.75, "follow_lag": 0.12, "fov_kick_deg": 2.2 },
+      "audio": { "impact": "hit_knockback", "whoosh": "body_launch" },
+      "haptics": { "light_ms": 12, "heavy_ms": 35, "pattern": "double" },
+      "satisfiers": ["knockback_pulse", "enemy_hit_flash", "hit_confirm_ping"],
+      "effects": [
+        { "id": "camera_offset_impulse", "trigger": "on_hit", "duration_ms": 180, "intensity": 0.6, "visual": "camera_nudge_attack_dir" }
+      ]
+    },
+    {
+      "profile_id": "minimal_tactical",
+      "title": "Minimal tactical (low noise)",
+      "tags": ["pvp", "readable", "low_fx"],
+      "hit_stop_ms": 12,
+      "screen_shake": 0.05,
+      "zoom_punch": 0.0,
+      "chromatic_aberration": 0.0,
+      "flash_color": "#cccccc",
+      "flash_ms": 15,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [],
+      "camera": { "shake_decay": 0.98, "follow_lag": 0.04, "fov_kick_deg": 0.0 },
+      "audio": { "impact": "hit_soft" },
+      "haptics": { "light_ms": 5, "heavy_ms": 10, "pattern": "single" },
+      "satisfiers": ["hit_confirm_ping"],
+      "effects": []
+    },
+    {
+      "profile_id": "entropy_glyph_storm",
+      "title": "Entropy glyph storm",
+      "tags": ["psi", "pmr", "stylized"],
+      "hit_stop_ms": 36,
+      "screen_shake": 0.16,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.32,
+      "flash_color": "#aa66ff",
+      "flash_ms": 38,
+      "damage_number_style": "entropy_glyph",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        { "id": "glyph_swirl", "count": 22, "spread_deg": 360, "speed": 1.8, "lifetime_ms": 650, "color": "#9966ff", "blend": "screen" }
+      ],
+      "camera": { "shake_decay": 0.88, "follow_lag": 0.08, "fov_kick_deg": 0.9 },
+      "audio": { "impact": "hit_psi_chime", "stinger": "entropy_whir" },
+      "haptics": { "light_ms": 10, "heavy_ms": 22, "pattern": "double" },
+      "satisfiers": ["entropy_spark", "combo_counter"],
+      "effects": [
+        { "id": "floating_glyphs", "trigger": "on_hit", "duration_ms": 500, "intensity": 0.7, "visual": "ui_glyph_orbit_damage" }
+      ]
+    },
+    {
+      "profile_id": "assist_synergy_burst",
+      "title": "Assist synergy burst",
+      "tags": ["coop", "assist", "social"],
+      "hit_stop_ms": 30,
+      "screen_shake": 0.14,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.12,
+      "flash_color": "#88ffcc",
+      "flash_ms": 35,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "link_spark", "count": 20, "spread_deg": 360, "speed": 3.0, "lifetime_ms": 300, "color": "#66ddaa", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.9, "follow_lag": 0.06, "fov_kick_deg": 0.7 },
+      "audio": { "impact": "hit_harmony", "stinger": "assist_link" },
+      "haptics": { "light_ms": 8, "heavy_ms": 18, "pattern": "single" },
+      "satisfiers": ["stamina_tick", "lifesteal_stream", "hit_confirm_ping"],
+      "effects": [
+        { "id": "ally_beam", "trigger": "on_hit", "duration_ms": 250, "intensity": 0.55, "visual": "beam_between_party_on_assist_window" }
+      ]
+    },
+    {
+      "profile_id": "death_rewind_glitch",
+      "title": "Death-near miss glitch",
+      "tags": ["death", "tension", "pmr"],
+      "hit_stop_ms": 55,
+      "screen_shake": 0.28,
+      "zoom_punch": 0.05,
+      "chromatic_aberration": 0.5,
+      "flash_color": "#ff0000",
+      "flash_ms": 60,
+      "damage_number_style": "crit_gold",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        { "id": "glitch_pixel", "count": 30, "spread_deg": 360, "speed": 4.0, "lifetime_ms": 200, "color": "#ff3366", "blend": "screen" }
+      ],
+      "camera": { "shake_decay": 0.7, "follow_lag": 0.15, "fov_kick_deg": 1.5 },
+      "audio": { "impact": "hit_critical", "stinger": "rewind_glitch" },
+      "haptics": { "light_ms": 15, "heavy_ms": 40, "pattern": "rumble_tail" },
+      "satisfiers": ["enemy_hit_flash", "entropy_spark"],
+      "effects": [
+        { "id": "scanline_burst", "trigger": "on_crit", "duration_ms": 150, "intensity": 0.65, "visual": "full_screen_glitch" }
+      ]
+    },
+    {
+      "profile_id": "stamina_rhythm",
+      "title": "Stamina rhythm pulses",
+      "tags": ["stamina", "feedback"],
+      "hit_stop_ms": 24,
+      "screen_shake": 0.1,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.06,
+      "flash_color": "#ffaa44",
+      "flash_ms": 18,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "stamina_ring", "count": 12, "spread_deg": 360, "speed": 2.0, "lifetime_ms": 220, "color": "#ff9944", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.92, "follow_lag": 0.05, "fov_kick_deg": 0.4 },
+      "audio": { "impact": "hit_tock" },
+      "haptics": { "light_ms": 7, "heavy_ms": 14, "pattern": "double" },
+      "satisfiers": ["stamina_tick", "hit_confirm_ping"],
+      "effects": [
+        { "id": "stamina_bar_pulse", "trigger": "on_hit", "duration_ms": 120, "intensity": 0.5, "visual": "hud_stamina_glow" }
+      ]
+    },
+    {
+      "profile_id": "multi_hit_flurry",
+      "title": "Multi-hit flurry",
+      "tags": ["fast", "combo"],
+      "hit_stop_ms": 14,
+      "screen_shake": 0.12,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.08,
+      "flash_color": "#fff0cc",
+      "flash_ms": 12,
+      "damage_number_style": "combo_stack",
+      "trail_style": "slash_ribbon",
+      "impact_particles": [
+        { "id": "micro_spark", "count": 6, "spread_deg": 25, "speed": 5.5, "lifetime_ms": 90, "color": "#ffcc88", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.93, "follow_lag": 0.04, "fov_kick_deg": 0.6 },
+      "audio": { "impact": "hit_flurry", "whoosh": "swing_rapid" },
+      "haptics": { "light_ms": 4, "heavy_ms": 10, "pattern": "single" },
+      "satisfiers": ["combo_counter", "hit_confirm_ping"],
+      "effects": [
+        { "id": "hit_stop_micro_stack", "trigger": "on_hit", "duration_ms": 14, "intensity": 0.5, "visual": "stacking_micro_freeze" }
+      ]
+    },
+    {
+      "profile_id": "block_absorb",
+      "title": "Block absorb shimmer",
+      "tags": ["defense", "block"],
+      "hit_stop_ms": 38,
+      "screen_shake": 0.06,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.25,
+      "flash_color": "#aaccff",
+      "flash_ms": 40,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "shield_ripple", "count": 16, "spread_deg": 120, "speed": 1.2, "lifetime_ms": 350, "color": "#88aaff", "blend": "screen" }
+      ],
+      "camera": { "shake_decay": 0.94, "follow_lag": 0.05, "fov_kick_deg": 0.5 },
+      "audio": { "impact": "block_thud", "stinger": "shield_recharge" },
+      "haptics": { "light_ms": 10, "heavy_ms": 25, "pattern": "single" },
+      "satisfiers": ["parry_ring", "stamina_tick"],
+      "effects": [
+        { "id": "shield_hex", "trigger": "on_block", "duration_ms": 280, "intensity": 0.6, "visual": "hex_shield_flash" }
+      ]
+    },
+    {
+      "profile_id": "ambient_dust_impact",
+      "title": "Ambient dust impact",
+      "tags": ["world", "grounded"],
+      "hit_stop_ms": 30,
+      "screen_shake": 0.18,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.05,
+      "flash_color": "#ddccaa",
+      "flash_ms": 25,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "dust_puff", "count": 35, "spread_deg": 90, "speed": 1.2, "lifetime_ms": 550, "color": "#aa9988", "blend": "alpha" }
+      ],
+      "camera": { "shake_decay": 0.85, "follow_lag": 0.08, "fov_kick_deg": 0.8 },
+      "audio": { "impact": "hit_dull", "sub_bass": "thump_soft" },
+      "haptics": { "light_ms": 10, "heavy_ms": 22, "pattern": "single" },
+      "satisfiers": ["ground_scorch_decal", "enemy_hit_flash"],
+      "effects": [
+        { "id": "ground_crack_decal", "trigger": "on_hit", "duration_ms": 3000, "intensity": 0.4, "visual": "decal_scorch_fade" }
+      ]
+    },
+    {
+      "profile_id": "neon_arcade",
+      "title": "Neon arcade overload",
+      "tags": ["arcade", "stylized", "high_fx"],
+      "hit_stop_ms": 40,
+      "screen_shake": 0.3,
+      "zoom_punch": 0.06,
+      "chromatic_aberration": 0.55,
+      "flash_color": "#00ffcc",
+      "flash_ms": 50,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "slash_ribbon",
+      "impact_particles": [
+        { "id": "neon_star", "count": 40, "spread_deg": 360, "speed": 6.0, "lifetime_ms": 280, "color": "#00ffaa", "blend": "add" },
+        { "id": "scan_ray", "count": 8, "spread_deg": 45, "speed": 10.0, "lifetime_ms": 120, "color": "#ff00ff", "blend": "add" }
+      ],
+      "camera": { "shake_decay": 0.8, "follow_lag": 0.09, "fov_kick_deg": 1.8 },
+      "audio": { "impact": "hit_synth", "stinger": "arcade_coin" },
+      "haptics": { "light_ms": 10, "heavy_ms": 28, "pattern": "double" },
+      "satisfiers": ["combo_counter", "hit_confirm_ping", "entropy_spark", "aoe_ring_expand"],
+      "effects": [
+        { "id": "palette_invert_flash", "trigger": "on_crit", "duration_ms": 80, "intensity": 0.35, "visual": "invert_flash" }
+      ]
+    },
+    {
+      "profile_id": "silent_killer",
+      "title": "Silent killer (audio-forward subtle FX)",
+      "tags": ["stealth", "low_fx"],
+      "hit_stop_ms": 20,
+      "screen_shake": 0.03,
+      "zoom_punch": 0.01,
+      "chromatic_aberration": 0.02,
+      "flash_color": "#333333",
+      "flash_ms": 10,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        { "id": "bloodless_mist", "count": 8, "spread_deg": 40, "speed": 0.8, "lifetime_ms": 400, "color": "#444444", "blend": "alpha" }
+      ],
+      "camera": { "shake_decay": 0.96, "follow_lag": 0.03, "fov_kick_deg": 0.2 },
+      "audio": { "impact": "hit_whisper", "whoosh": "knife_slice" },
+      "haptics": { "light_ms": 4, "heavy_ms": 8, "pattern": "single" },
+      "satisfiers": ["hit_confirm_ping"],
+      "effects": [
+        { "id": "vignette_tight", "trigger": "on_kill", "duration_ms": 400, "intensity": 0.3, "visual": "vignette_brief" }
+      ]
+    }
+  ]
+}

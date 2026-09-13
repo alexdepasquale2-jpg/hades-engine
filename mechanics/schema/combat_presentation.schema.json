@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Combat presentation & satisfaction profile",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "profile_id": { "type": "string", "minLength": 1 },
+    "title": { "type": "string" },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "hit_stop_ms": { "type": "number", "minimum": 0, "maximum": 250 },
+    "screen_shake": { "type": "number", "minimum": 0, "maximum": 1 },
+    "zoom_punch": { "type": "number", "minimum": 0, "maximum": 0.25 },
+    "chromatic_aberration": { "type": "number", "minimum": 0, "maximum": 1 },
+    "flash_color": { "type": "string" },
+    "flash_ms": { "type": "number", "minimum": 0, "maximum": 500 },
+    "damage_number_style": {
+      "enum": [
+        "minimal",
+        "arcade_pop",
+        "crit_gold",
+        "combo_stack",
+        "entropy_glyph",
+        "boss_ticker"
+      ]
+    },
+    "trail_style": {
+      "enum": ["none", "slash_ribbon", "motion_streak", "psi_afterimage", "ember_wake"]
+    },
+    "impact_particles": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/particle_burst" }
+    },
+    "camera": { "$ref": "#/$defs/camera_profile" },
+    "audio": { "$ref": "#/$defs/audio_layers" },
+    "haptics": { "$ref": "#/$defs/haptics_profile" },
+    "satisfiers": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "hit_confirm_ping",
+          "combo_counter",
+          "enemy_hit_flash",
+          "knockback_pulse",
+          "stamina_tick",
+          "entropy_spark",
+          "execute_banner",
+          "parry_ring",
+          "aoe_ring_expand",
+          "lifesteal_stream",
+          "boss_phase_crack",
+          "ground_scorch_decal"
+        ]
+      }
+    },
+    "effects": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/timed_effect" }
+    }
+  },
+  "$defs": {
+    "particle_burst": {
+      "type": "object",
+      "required": ["id", "count"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "count": { "type": "integer", "minimum": 1, "maximum": 256 },
+        "spread_deg": { "type": "number" },
+        "speed": { "type": "number" },
+        "lifetime_ms": { "type": "number" },
+        "color": { "type": "string" },
+        "blend": { "enum": ["add", "alpha", "screen"] }
+      }
+    },
+    "camera_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shake_decay": { "type": "number" },
+        "follow_lag": { "type": "number" },
+        "fov_kick_deg": { "type": "number" }
+      }
+    },
+    "audio_layers": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "impact": { "type": "string" },
+        "whoosh": { "type": "string" },
+        "sub_bass": { "type": "string" },
+        "stinger": { "type": "string" }
+      }
+    },
+    "haptics_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "light_ms": { "type": "number" },
+        "heavy_ms": { "type": "number" },
+        "pattern": { "enum": ["single", "double", "rumble_tail"] }
+      }
+    },
+    "timed_effect": {
+      "type": "object",
+      "required": ["id", "trigger"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "trigger": {
+          "enum": [
+            "windup_start",
+            "on_hit",
+            "on_crit",
+            "on_kill",
+            "on_parry",
+            "on_block",
+            "on_aoe_peak",
+            "on_execute"
+          ]
+        },
+        "duration_ms": { "type": "number" },
+        "intensity": { "type": "number", "minimum": 0, "maximum": 1 },
+        "visual": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    }
+  }
+}

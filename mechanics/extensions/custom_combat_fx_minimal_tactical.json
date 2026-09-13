@@ -1,0 +1,90 @@
+{
+  "id": "custom.combat_fx_minimal_tactical",
+  "version": 1,
+  "title": "Combat FX \u2014 Minimal tactical (low noise)",
+  "description": "Apply graphical combat profile \"minimal_tactical\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.harm_entropy": 0.35,
+    "tightness": 0.99,
+    "dt_ms": 50,
+    "presentation.combat": {
+      "profile_id": "minimal_tactical",
+      "title": "Minimal tactical (low noise)",
+      "tags": [
+        "pvp",
+        "readable",
+        "low_fx"
+      ],
+      "hit_stop_ms": 12,
+      "screen_shake": 0.05,
+      "zoom_punch": 0.0,
+      "chromatic_aberration": 0.0,
+      "flash_color": "#cccccc",
+      "flash_ms": 15,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [],
+      "camera": {
+        "shake_decay": 0.98,
+        "follow_lag": 0.04,
+        "fov_kick_deg": 0.0
+      },
+      "audio": {
+        "impact": "hit_soft"
+      },
+      "haptics": {
+        "light_ms": 5,
+        "heavy_ms": 10,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "hit_confirm_ping"
+      ],
+      "effects": []
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "minimal_tactical",
+    "title": "Minimal tactical (low noise)",
+    "tags": [
+      "pvp",
+      "readable",
+      "low_fx"
+    ],
+    "hit_stop_ms": 12,
+    "screen_shake": 0.05,
+    "zoom_punch": 0.0,
+    "chromatic_aberration": 0.0,
+    "flash_color": "#cccccc",
+    "flash_ms": 15,
+    "damage_number_style": "minimal",
+    "trail_style": "none",
+    "impact_particles": [],
+    "camera": {
+      "shake_decay": 0.98,
+      "follow_lag": 0.04,
+      "fov_kick_deg": 0.0
+    },
+    "audio": {
+      "impact": "hit_soft"
+    },
+    "haptics": {
+      "light_ms": 5,
+      "heavy_ms": 10,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "hit_confirm_ping"
+    ],
+    "effects": []
+  },
+  "design_notes": [
+    "Profile: minimal_tactical. Tags: pvp, readable, low_fx.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

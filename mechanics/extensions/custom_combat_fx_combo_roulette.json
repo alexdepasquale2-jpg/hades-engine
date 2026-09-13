@@ -1,0 +1,145 @@
+{
+  "id": "custom.combat_fx_combo_roulette",
+  "version": 1,
+  "title": "Combat FX \u2014 Combo escalation roulette",
+  "description": "Apply graphical combat profile \"combo_roulette\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.stamina_cost": 9,
+    "motion.max_speed": 7.2,
+    "presentation.combat": {
+      "profile_id": "combo_roulette",
+      "title": "Combo escalation roulette",
+      "tags": [
+        "combo",
+        "arcade",
+        "retention"
+      ],
+      "hit_stop_ms": 32,
+      "screen_shake": 0.2,
+      "zoom_punch": 0.04,
+      "chromatic_aberration": 0.14,
+      "flash_color": "#ffee00",
+      "flash_ms": 28,
+      "damage_number_style": "combo_stack",
+      "trail_style": "slash_ribbon",
+      "impact_particles": [
+        {
+          "id": "combo_spark",
+          "count": 8,
+          "spread_deg": 30,
+          "speed": 5.0,
+          "lifetime_ms": 160,
+          "color": "#ffdd00",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.87,
+        "follow_lag": 0.07,
+        "fov_kick_deg": 1.1
+      },
+      "audio": {
+        "impact": "hit_punchy",
+        "stinger": "combo_tier_up"
+      },
+      "haptics": {
+        "light_ms": 8,
+        "heavy_ms": 20,
+        "pattern": "double"
+      },
+      "satisfiers": [
+        "combo_counter",
+        "hit_confirm_ping",
+        "entropy_spark"
+      ],
+      "effects": [
+        {
+          "id": "tier_color_shift",
+          "trigger": "on_hit",
+          "duration_ms": 200,
+          "intensity": 0.5,
+          "visual": "ui_combo_palette_step"
+        },
+        {
+          "id": "pitch_rise",
+          "trigger": "on_hit",
+          "duration_ms": 0,
+          "intensity": 0.7,
+          "visual": "audio_pitch_combo_stack"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "combo_roulette",
+    "title": "Combo escalation roulette",
+    "tags": [
+      "combo",
+      "arcade",
+      "retention"
+    ],
+    "hit_stop_ms": 32,
+    "screen_shake": 0.2,
+    "zoom_punch": 0.04,
+    "chromatic_aberration": 0.14,
+    "flash_color": "#ffee00",
+    "flash_ms": 28,
+    "damage_number_style": "combo_stack",
+    "trail_style": "slash_ribbon",
+    "impact_particles": [
+      {
+        "id": "combo_spark",
+        "count": 8,
+        "spread_deg": 30,
+        "speed": 5.0,
+        "lifetime_ms": 160,
+        "color": "#ffdd00",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.87,
+      "follow_lag": 0.07,
+      "fov_kick_deg": 1.1
+    },
+    "audio": {
+      "impact": "hit_punchy",
+      "stinger": "combo_tier_up"
+    },
+    "haptics": {
+      "light_ms": 8,
+      "heavy_ms": 20,
+      "pattern": "double"
+    },
+    "satisfiers": [
+      "combo_counter",
+      "hit_confirm_ping",
+      "entropy_spark"
+    ],
+    "effects": [
+      {
+        "id": "tier_color_shift",
+        "trigger": "on_hit",
+        "duration_ms": 200,
+        "intensity": 0.5,
+        "visual": "ui_combo_palette_step"
+      },
+      {
+        "id": "pitch_rise",
+        "trigger": "on_hit",
+        "duration_ms": 0,
+        "intensity": 0.7,
+        "visual": "audio_pitch_combo_stack"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: combo_roulette. Tags: combo, arcade, retention.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

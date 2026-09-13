@@ -1,0 +1,170 @@
+{
+  "id": "custom.combat_fx_heavy_impact",
+  "version": 1,
+  "title": "Combat FX \u2014 Heavy impact",
+  "description": "Apply graphical combat profile \"heavy_impact\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.damage": 44,
+    "verbs.attack.harm_entropy": 0.62,
+    "tightness": 0.94,
+    "presentation.combat": {
+      "profile_id": "heavy_impact",
+      "title": "Heavy impact",
+      "tags": [
+        "melee",
+        "weighty",
+        "boss"
+      ],
+      "hit_stop_ms": 78,
+      "screen_shake": 0.48,
+      "zoom_punch": 0.08,
+      "chromatic_aberration": 0.22,
+      "flash_color": "#ff6633",
+      "flash_ms": 55,
+      "damage_number_style": "crit_gold",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        {
+          "id": "debris_chunk",
+          "count": 24,
+          "spread_deg": 55,
+          "speed": 3.0,
+          "lifetime_ms": 420,
+          "color": "#aa8866",
+          "blend": "alpha"
+        },
+        {
+          "id": "shock_dust",
+          "count": 40,
+          "spread_deg": 360,
+          "speed": 1.5,
+          "lifetime_ms": 600,
+          "color": "#998877",
+          "blend": "screen"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.72,
+        "follow_lag": 0.14,
+        "fov_kick_deg": 2.5
+      },
+      "audio": {
+        "impact": "hit_bone_heavy",
+        "whoosh": "swing_heavy",
+        "sub_bass": "boom_low",
+        "stinger": "impact_stinger_brass"
+      },
+      "haptics": {
+        "light_ms": 18,
+        "heavy_ms": 55,
+        "pattern": "rumble_tail"
+      },
+      "satisfiers": [
+        "hit_confirm_ping",
+        "enemy_hit_flash",
+        "knockback_pulse",
+        "ground_scorch_decal"
+      ],
+      "effects": [
+        {
+          "id": "radial_blur",
+          "trigger": "on_hit",
+          "duration_ms": 120,
+          "intensity": 0.45,
+          "visual": "radial_blur_pulse"
+        },
+        {
+          "id": "squash_target",
+          "trigger": "on_hit",
+          "duration_ms": 90,
+          "intensity": 0.35,
+          "visual": "sprite_squash_stretch"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "heavy_impact",
+    "title": "Heavy impact",
+    "tags": [
+      "melee",
+      "weighty",
+      "boss"
+    ],
+    "hit_stop_ms": 78,
+    "screen_shake": 0.48,
+    "zoom_punch": 0.08,
+    "chromatic_aberration": 0.22,
+    "flash_color": "#ff6633",
+    "flash_ms": 55,
+    "damage_number_style": "crit_gold",
+    "trail_style": "motion_streak",
+    "impact_particles": [
+      {
+        "id": "debris_chunk",
+        "count": 24,
+        "spread_deg": 55,
+        "speed": 3.0,
+        "lifetime_ms": 420,
+        "color": "#aa8866",
+        "blend": "alpha"
+      },
+      {
+        "id": "shock_dust",
+        "count": 40,
+        "spread_deg": 360,
+        "speed": 1.5,
+        "lifetime_ms": 600,
+        "color": "#998877",
+        "blend": "screen"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.72,
+      "follow_lag": 0.14,
+      "fov_kick_deg": 2.5
+    },
+    "audio": {
+      "impact": "hit_bone_heavy",
+      "whoosh": "swing_heavy",
+      "sub_bass": "boom_low",
+      "stinger": "impact_stinger_brass"
+    },
+    "haptics": {
+      "light_ms": 18,
+      "heavy_ms": 55,
+      "pattern": "rumble_tail"
+    },
+    "satisfiers": [
+      "hit_confirm_ping",
+      "enemy_hit_flash",
+      "knockback_pulse",
+      "ground_scorch_decal"
+    ],
+    "effects": [
+      {
+        "id": "radial_blur",
+        "trigger": "on_hit",
+        "duration_ms": 120,
+        "intensity": 0.45,
+        "visual": "radial_blur_pulse"
+      },
+      {
+        "id": "squash_target",
+        "trigger": "on_hit",
+        "duration_ms": 90,
+        "intensity": 0.35,
+        "visual": "sprite_squash_stretch"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: heavy_impact. Tags: melee, weighty, boss.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

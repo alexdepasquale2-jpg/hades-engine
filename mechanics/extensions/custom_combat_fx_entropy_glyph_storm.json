@@ -1,0 +1,129 @@
+{
+  "id": "custom.combat_fx_entropy_glyph_storm",
+  "version": 1,
+  "title": "Combat FX \u2014 Entropy glyph storm",
+  "description": "Apply graphical combat profile \"entropy_glyph_storm\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "psi.enabled": true,
+    "verbs.attack.harm_entropy": 0.52,
+    "presentation.combat": {
+      "profile_id": "entropy_glyph_storm",
+      "title": "Entropy glyph storm",
+      "tags": [
+        "psi",
+        "pmr",
+        "stylized"
+      ],
+      "hit_stop_ms": 36,
+      "screen_shake": 0.16,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.32,
+      "flash_color": "#aa66ff",
+      "flash_ms": 38,
+      "damage_number_style": "entropy_glyph",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        {
+          "id": "glyph_swirl",
+          "count": 22,
+          "spread_deg": 360,
+          "speed": 1.8,
+          "lifetime_ms": 650,
+          "color": "#9966ff",
+          "blend": "screen"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.88,
+        "follow_lag": 0.08,
+        "fov_kick_deg": 0.9
+      },
+      "audio": {
+        "impact": "hit_psi_chime",
+        "stinger": "entropy_whir"
+      },
+      "haptics": {
+        "light_ms": 10,
+        "heavy_ms": 22,
+        "pattern": "double"
+      },
+      "satisfiers": [
+        "entropy_spark",
+        "combo_counter"
+      ],
+      "effects": [
+        {
+          "id": "floating_glyphs",
+          "trigger": "on_hit",
+          "duration_ms": 500,
+          "intensity": 0.7,
+          "visual": "ui_glyph_orbit_damage"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "entropy_glyph_storm",
+    "title": "Entropy glyph storm",
+    "tags": [
+      "psi",
+      "pmr",
+      "stylized"
+    ],
+    "hit_stop_ms": 36,
+    "screen_shake": 0.16,
+    "zoom_punch": 0.03,
+    "chromatic_aberration": 0.32,
+    "flash_color": "#aa66ff",
+    "flash_ms": 38,
+    "damage_number_style": "entropy_glyph",
+    "trail_style": "psi_afterimage",
+    "impact_particles": [
+      {
+        "id": "glyph_swirl",
+        "count": 22,
+        "spread_deg": 360,
+        "speed": 1.8,
+        "lifetime_ms": 650,
+        "color": "#9966ff",
+        "blend": "screen"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.88,
+      "follow_lag": 0.08,
+      "fov_kick_deg": 0.9
+    },
+    "audio": {
+      "impact": "hit_psi_chime",
+      "stinger": "entropy_whir"
+    },
+    "haptics": {
+      "light_ms": 10,
+      "heavy_ms": 22,
+      "pattern": "double"
+    },
+    "satisfiers": [
+      "entropy_spark",
+      "combo_counter"
+    ],
+    "effects": [
+      {
+        "id": "floating_glyphs",
+        "trigger": "on_hit",
+        "duration_ms": 500,
+        "intensity": 0.7,
+        "visual": "ui_glyph_orbit_damage"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: entropy_glyph_storm. Tags: psi, pmr, stylized.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

@@ -1,0 +1,127 @@
+{
+  "id": "custom.combat_fx_block_absorb",
+  "version": 1,
+  "title": "Combat FX \u2014 Block absorb shimmer",
+  "description": "Apply graphical combat profile \"block_absorb\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.stamina_cost": 15,
+    "tightness": 0.93,
+    "presentation.combat": {
+      "profile_id": "block_absorb",
+      "title": "Block absorb shimmer",
+      "tags": [
+        "defense",
+        "block"
+      ],
+      "hit_stop_ms": 38,
+      "screen_shake": 0.06,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.25,
+      "flash_color": "#aaccff",
+      "flash_ms": 40,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "shield_ripple",
+          "count": 16,
+          "spread_deg": 120,
+          "speed": 1.2,
+          "lifetime_ms": 350,
+          "color": "#88aaff",
+          "blend": "screen"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.94,
+        "follow_lag": 0.05,
+        "fov_kick_deg": 0.5
+      },
+      "audio": {
+        "impact": "block_thud",
+        "stinger": "shield_recharge"
+      },
+      "haptics": {
+        "light_ms": 10,
+        "heavy_ms": 25,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "parry_ring",
+        "stamina_tick"
+      ],
+      "effects": [
+        {
+          "id": "shield_hex",
+          "trigger": "on_block",
+          "duration_ms": 280,
+          "intensity": 0.6,
+          "visual": "hex_shield_flash"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "block_absorb",
+    "title": "Block absorb shimmer",
+    "tags": [
+      "defense",
+      "block"
+    ],
+    "hit_stop_ms": 38,
+    "screen_shake": 0.06,
+    "zoom_punch": 0.02,
+    "chromatic_aberration": 0.25,
+    "flash_color": "#aaccff",
+    "flash_ms": 40,
+    "damage_number_style": "minimal",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "shield_ripple",
+        "count": 16,
+        "spread_deg": 120,
+        "speed": 1.2,
+        "lifetime_ms": 350,
+        "color": "#88aaff",
+        "blend": "screen"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.94,
+      "follow_lag": 0.05,
+      "fov_kick_deg": 0.5
+    },
+    "audio": {
+      "impact": "block_thud",
+      "stinger": "shield_recharge"
+    },
+    "haptics": {
+      "light_ms": 10,
+      "heavy_ms": 25,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "parry_ring",
+      "stamina_tick"
+    ],
+    "effects": [
+      {
+        "id": "shield_hex",
+        "trigger": "on_block",
+        "duration_ms": 280,
+        "intensity": 0.6,
+        "visual": "hex_shield_flash"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: block_absorb. Tags: defense, block.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

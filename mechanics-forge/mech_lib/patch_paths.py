@@ -36,6 +36,10 @@ PATCH_PATH_CATALOG: list[tuple[str, str]] = [
     ("verbs.assist.ai_practice", "AI practice flag"),
     ("crdt.props", "CRDT props model (e.g. or-set)"),
     ("crdt.presence", "CRDT presence model"),
+    ("presentation.combat", "Full combat FX profile object (see mechanics/catalog/combat_fx_presets.json)"),
+    ("presentation.combat.profile_id", "Active combat presentation preset id"),
+    ("presentation.combat.hit_stop_ms", "Hit-stop duration on connect"),
+    ("presentation.combat.screen_shake", "Screen shake intensity 0–1"),
 ]
 
 

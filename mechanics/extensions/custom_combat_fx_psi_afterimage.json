@@ -1,0 +1,130 @@
+{
+  "id": "custom.combat_fx_psi_afterimage",
+  "version": 1,
+  "title": "Combat FX \u2014 Psi afterimage combat",
+  "description": "Apply graphical combat profile \"psi_afterimage\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "psi.enabled": true,
+    "verbs.attack.harm_entropy": 0.48,
+    "tightness": 0.75,
+    "presentation.combat": {
+      "profile_id": "psi_afterimage",
+      "title": "Psi afterimage combat",
+      "tags": [
+        "psi",
+        "dream",
+        "stylized"
+      ],
+      "hit_stop_ms": 40,
+      "screen_shake": 0.18,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.35,
+      "flash_color": "#cc88ff",
+      "flash_ms": 40,
+      "damage_number_style": "entropy_glyph",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        {
+          "id": "glyph_shatter",
+          "count": 16,
+          "spread_deg": 360,
+          "speed": 2.2,
+          "lifetime_ms": 500,
+          "color": "#bb66ff",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.88,
+        "follow_lag": 0.1,
+        "fov_kick_deg": 1.0
+      },
+      "audio": {
+        "impact": "hit_psi_chime",
+        "stinger": "entropy_tick"
+      },
+      "haptics": {
+        "light_ms": 10,
+        "heavy_ms": 22,
+        "pattern": "double"
+      },
+      "satisfiers": [
+        "entropy_spark",
+        "enemy_hit_flash"
+      ],
+      "effects": [
+        {
+          "id": "echo_ghost",
+          "trigger": "on_hit",
+          "duration_ms": 280,
+          "intensity": 0.5,
+          "visual": "duplicate_sprite_fade"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "psi_afterimage",
+    "title": "Psi afterimage combat",
+    "tags": [
+      "psi",
+      "dream",
+      "stylized"
+    ],
+    "hit_stop_ms": 40,
+    "screen_shake": 0.18,
+    "zoom_punch": 0.03,
+    "chromatic_aberration": 0.35,
+    "flash_color": "#cc88ff",
+    "flash_ms": 40,
+    "damage_number_style": "entropy_glyph",
+    "trail_style": "psi_afterimage",
+    "impact_particles": [
+      {
+        "id": "glyph_shatter",
+        "count": 16,
+        "spread_deg": 360,
+        "speed": 2.2,
+        "lifetime_ms": 500,
+        "color": "#bb66ff",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.88,
+      "follow_lag": 0.1,
+      "fov_kick_deg": 1.0
+    },
+    "audio": {
+      "impact": "hit_psi_chime",
+      "stinger": "entropy_tick"
+    },
+    "haptics": {
+      "light_ms": 10,
+      "heavy_ms": 22,
+      "pattern": "double"
+    },
+    "satisfiers": [
+      "entropy_spark",
+      "enemy_hit_flash"
+    ],
+    "effects": [
+      {
+        "id": "echo_ghost",
+        "trigger": "on_hit",
+        "duration_ms": 280,
+        "intensity": 0.5,
+        "visual": "duplicate_sprite_fade"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: psi_afterimage. Tags: psi, dream, stylized.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

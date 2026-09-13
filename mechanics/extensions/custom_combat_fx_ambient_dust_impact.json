@@ -1,0 +1,127 @@
+{
+  "id": "custom.combat_fx_ambient_dust_impact",
+  "version": 1,
+  "title": "Combat FX \u2014 Ambient dust impact",
+  "description": "Apply graphical combat profile \"ambient_dust_impact\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "motion.gravity": 9.8,
+    "verbs.attack.harm_entropy": 0.45,
+    "presentation.combat": {
+      "profile_id": "ambient_dust_impact",
+      "title": "Ambient dust impact",
+      "tags": [
+        "world",
+        "grounded"
+      ],
+      "hit_stop_ms": 30,
+      "screen_shake": 0.18,
+      "zoom_punch": 0.03,
+      "chromatic_aberration": 0.05,
+      "flash_color": "#ddccaa",
+      "flash_ms": 25,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "dust_puff",
+          "count": 35,
+          "spread_deg": 90,
+          "speed": 1.2,
+          "lifetime_ms": 550,
+          "color": "#aa9988",
+          "blend": "alpha"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.85,
+        "follow_lag": 0.08,
+        "fov_kick_deg": 0.8
+      },
+      "audio": {
+        "impact": "hit_dull",
+        "sub_bass": "thump_soft"
+      },
+      "haptics": {
+        "light_ms": 10,
+        "heavy_ms": 22,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "ground_scorch_decal",
+        "enemy_hit_flash"
+      ],
+      "effects": [
+        {
+          "id": "ground_crack_decal",
+          "trigger": "on_hit",
+          "duration_ms": 3000,
+          "intensity": 0.4,
+          "visual": "decal_scorch_fade"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "ambient_dust_impact",
+    "title": "Ambient dust impact",
+    "tags": [
+      "world",
+      "grounded"
+    ],
+    "hit_stop_ms": 30,
+    "screen_shake": 0.18,
+    "zoom_punch": 0.03,
+    "chromatic_aberration": 0.05,
+    "flash_color": "#ddccaa",
+    "flash_ms": 25,
+    "damage_number_style": "minimal",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "dust_puff",
+        "count": 35,
+        "spread_deg": 90,
+        "speed": 1.2,
+        "lifetime_ms": 550,
+        "color": "#aa9988",
+        "blend": "alpha"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.85,
+      "follow_lag": 0.08,
+      "fov_kick_deg": 0.8
+    },
+    "audio": {
+      "impact": "hit_dull",
+      "sub_bass": "thump_soft"
+    },
+    "haptics": {
+      "light_ms": 10,
+      "heavy_ms": 22,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "ground_scorch_decal",
+      "enemy_hit_flash"
+    ],
+    "effects": [
+      {
+        "id": "ground_crack_decal",
+        "trigger": "on_hit",
+        "duration_ms": 3000,
+        "intensity": 0.4,
+        "visual": "decal_scorch_fade"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: ambient_dust_impact. Tags: world, grounded.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

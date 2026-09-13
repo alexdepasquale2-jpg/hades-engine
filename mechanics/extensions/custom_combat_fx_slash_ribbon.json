@@ -1,0 +1,129 @@
+{
+  "id": "custom.combat_fx_slash_ribbon",
+  "version": 1,
+  "title": "Combat FX \u2014 Slash ribbon trails",
+  "description": "Apply graphical combat profile \"slash_ribbon\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.stamina_cost": 10,
+    "motion.max_speed": 7.5,
+    "presentation.combat": {
+      "profile_id": "slash_ribbon",
+      "title": "Slash ribbon trails",
+      "tags": [
+        "melee",
+        "stylized",
+        "fast"
+      ],
+      "hit_stop_ms": 28,
+      "screen_shake": 0.15,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.08,
+      "flash_color": "#aaddff",
+      "flash_ms": 25,
+      "damage_number_style": "combo_stack",
+      "trail_style": "slash_ribbon",
+      "impact_particles": [
+        {
+          "id": "arc_spark",
+          "count": 12,
+          "spread_deg": 18,
+          "speed": 6.0,
+          "lifetime_ms": 140,
+          "color": "#88ccff",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.9,
+        "follow_lag": 0.05,
+        "fov_kick_deg": 0.8
+      },
+      "audio": {
+        "impact": "hit_slice",
+        "whoosh": "swing_ribbon"
+      },
+      "haptics": {
+        "light_ms": 8,
+        "heavy_ms": 16,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "combo_counter",
+        "hit_confirm_ping"
+      ],
+      "effects": [
+        {
+          "id": "ribbon_mesh",
+          "trigger": "windup_start",
+          "duration_ms": 220,
+          "intensity": 0.7,
+          "visual": "mesh_trail_weapon_arc"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "slash_ribbon",
+    "title": "Slash ribbon trails",
+    "tags": [
+      "melee",
+      "stylized",
+      "fast"
+    ],
+    "hit_stop_ms": 28,
+    "screen_shake": 0.15,
+    "zoom_punch": 0.02,
+    "chromatic_aberration": 0.08,
+    "flash_color": "#aaddff",
+    "flash_ms": 25,
+    "damage_number_style": "combo_stack",
+    "trail_style": "slash_ribbon",
+    "impact_particles": [
+      {
+        "id": "arc_spark",
+        "count": 12,
+        "spread_deg": 18,
+        "speed": 6.0,
+        "lifetime_ms": 140,
+        "color": "#88ccff",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.9,
+      "follow_lag": 0.05,
+      "fov_kick_deg": 0.8
+    },
+    "audio": {
+      "impact": "hit_slice",
+      "whoosh": "swing_ribbon"
+    },
+    "haptics": {
+      "light_ms": 8,
+      "heavy_ms": 16,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "combo_counter",
+      "hit_confirm_ping"
+    ],
+    "effects": [
+      {
+        "id": "ribbon_mesh",
+        "trigger": "windup_start",
+        "duration_ms": 220,
+        "intensity": 0.7,
+        "visual": "mesh_trail_weapon_arc"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: slash_ribbon. Tags: melee, stylized, fast.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

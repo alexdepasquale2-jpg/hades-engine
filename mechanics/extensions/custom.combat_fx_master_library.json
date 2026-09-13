@@ -1,0 +1,19 @@
+{
+  "id": "custom.combat_fx_master_library",
+  "version": 1,
+  "title": "Combat FX master library",
+  "description": "Full catalog of combat presentation presets (particles, camera, hit-stop, satisfiers). Reference for clients and designers; use sibling extensions to apply a single profile to a ruleset draft.",
+  "category": "combat",
+  "engine_status": "design_only",
+  "patches": {},
+  "combat_presentation": {
+    "catalog_ref": "mechanics/catalog/combat_fx_presets.json",
+    "preset_count": 24
+  },
+  "design_notes": [
+    "Each preset maps to presentation.combat on the ruleset when applied via an apply-pack extension.",
+    "harm_entropy and tightness are tuned in apply packs to match visual intensity.",
+    "tbc-play / future renderers should read presentation.combat at runtime once the engine exposes it."
+  ],
+  "compatible_rulesets": ["pmr.v1", "npmr.academy.v1"]
+}

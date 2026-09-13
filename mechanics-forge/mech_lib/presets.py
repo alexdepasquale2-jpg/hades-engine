@@ -33,6 +33,26 @@ PRESETS: dict[str, dict[str, Any]] = {
         "death.rewind_s": 0,
         "tightness": 0.98,
     },
+    "Combat FX — crisp hit-stop": {
+        "verbs.attack.harm_entropy": 0.55,
+        "tightness": 0.9,
+        "presentation.combat.profile_id": "crisp_hitstop",
+        "presentation.combat.hit_stop_ms": 52,
+        "presentation.combat.screen_shake": 0.22,
+    },
+    "Combat FX — heavy impact": {
+        "verbs.attack.damage": 44,
+        "verbs.attack.harm_entropy": 0.62,
+        "presentation.combat.profile_id": "heavy_impact",
+        "presentation.combat.hit_stop_ms": 78,
+        "presentation.combat.screen_shake": 0.48,
+    },
+    "Combat FX — neon arcade": {
+        "tightness": 0.7,
+        "verbs.attack.damage": 36,
+        "presentation.combat.profile_id": "neon_arcade",
+        "presentation.combat.chromatic_aberration": 0.55,
+    },
 }
 
 

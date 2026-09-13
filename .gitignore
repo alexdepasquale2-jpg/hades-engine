@@ -5,4 +5,5 @@
 /dashboard/.data/
 /asset-forge/.venv/
 /mechanics-forge/.venv/
+/hades-studio/.venv/
 **/__pycache__/

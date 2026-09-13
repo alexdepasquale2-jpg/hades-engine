@@ -1,0 +1,147 @@
+{
+  "id": "custom.combat_fx_boss_phase_break",
+  "version": 1,
+  "title": "Combat FX \u2014 Boss phase break spectacle",
+  "description": "Apply graphical combat profile \"boss_phase_break\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.damage": 46,
+    "tightness": 0.97,
+    "presentation.combat": {
+      "profile_id": "boss_phase_break",
+      "title": "Boss phase break spectacle",
+      "tags": [
+        "boss",
+        "cinematic",
+        "phase"
+      ],
+      "hit_stop_ms": 95,
+      "screen_shake": 0.62,
+      "zoom_punch": 0.1,
+      "chromatic_aberration": 0.45,
+      "flash_color": "#ff00aa",
+      "flash_ms": 100,
+      "damage_number_style": "boss_ticker",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        {
+          "id": "phase_crack",
+          "count": 80,
+          "spread_deg": 360,
+          "speed": 7.0,
+          "lifetime_ms": 800,
+          "color": "#ff66cc",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.6,
+        "follow_lag": 0.2,
+        "fov_kick_deg": 4.0
+      },
+      "audio": {
+        "impact": "boss_break",
+        "sub_bass": "phase_drop",
+        "stinger": "orchestra_hit"
+      },
+      "haptics": {
+        "light_ms": 25,
+        "heavy_ms": 90,
+        "pattern": "rumble_tail"
+      },
+      "satisfiers": [
+        "boss_phase_crack",
+        "execute_banner",
+        "aoe_ring_expand"
+      ],
+      "effects": [
+        {
+          "id": "arena_dim",
+          "trigger": "on_hit",
+          "duration_ms": 1200,
+          "intensity": 0.55,
+          "visual": "vignette_pulse"
+        },
+        {
+          "id": "sprite_crack_overlay",
+          "trigger": "on_crit",
+          "duration_ms": 2000,
+          "intensity": 0.8,
+          "visual": "boss_shell_fracture"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "boss_phase_break",
+    "title": "Boss phase break spectacle",
+    "tags": [
+      "boss",
+      "cinematic",
+      "phase"
+    ],
+    "hit_stop_ms": 95,
+    "screen_shake": 0.62,
+    "zoom_punch": 0.1,
+    "chromatic_aberration": 0.45,
+    "flash_color": "#ff00aa",
+    "flash_ms": 100,
+    "damage_number_style": "boss_ticker",
+    "trail_style": "psi_afterimage",
+    "impact_particles": [
+      {
+        "id": "phase_crack",
+        "count": 80,
+        "spread_deg": 360,
+        "speed": 7.0,
+        "lifetime_ms": 800,
+        "color": "#ff66cc",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.6,
+      "follow_lag": 0.2,
+      "fov_kick_deg": 4.0
+    },
+    "audio": {
+      "impact": "boss_break",
+      "sub_bass": "phase_drop",
+      "stinger": "orchestra_hit"
+    },
+    "haptics": {
+      "light_ms": 25,
+      "heavy_ms": 90,
+      "pattern": "rumble_tail"
+    },
+    "satisfiers": [
+      "boss_phase_crack",
+      "execute_banner",
+      "aoe_ring_expand"
+    ],
+    "effects": [
+      {
+        "id": "arena_dim",
+        "trigger": "on_hit",
+        "duration_ms": 1200,
+        "intensity": 0.55,
+        "visual": "vignette_pulse"
+      },
+      {
+        "id": "sprite_crack_overlay",
+        "trigger": "on_crit",
+        "duration_ms": 2000,
+        "intensity": 0.8,
+        "visual": "boss_shell_fracture"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: boss_phase_break. Tags: boss, cinematic, phase.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

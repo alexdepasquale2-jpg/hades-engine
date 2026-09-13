@@ -9,6 +9,14 @@ Rust library: AUM core, PMR/NPMR frames, entropy ledger, netcode rewind, shardin
 | `tbc-engine/` | Crate source, tests, `tick_step` bench |
 | `rulesets/*.json` | PMR / NPMR Academy / NPMR Dream rules |
 
+## Hades Studio (unified editor)
+
+One **engine-style editor** for the whole pipeline: **Project**, **Scene** (hierarchy + map + inspector), **Assets** (procedural studio + packs), **Mechanics** (full ruleset workbench), **Play** (launch `tbc-play`), and **Build** (local CI).
+
+**Windows:** double-click [`run-hades-studio.bat`](run-hades-studio.bat) → http://localhost:**8500**
+
+Legacy standalone apps (still work): Asset Forge **8502**, Mechanics Forge **8503**, Dev Dashboard **8501**.
+
 ## Play the game (`tbc-play`)
 
 Native client that lists **all playable levels**: built-in ruleset sandboxes plus every content pack under `assets/packs/`.

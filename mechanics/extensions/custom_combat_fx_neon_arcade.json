@@ -1,0 +1,151 @@
+{
+  "id": "custom.combat_fx_neon_arcade",
+  "version": 1,
+  "title": "Combat FX \u2014 Neon arcade overload",
+  "description": "Apply graphical combat profile \"neon_arcade\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "tightness": 0.7,
+    "verbs.attack.damage": 36,
+    "presentation.combat": {
+      "profile_id": "neon_arcade",
+      "title": "Neon arcade overload",
+      "tags": [
+        "arcade",
+        "stylized",
+        "high_fx"
+      ],
+      "hit_stop_ms": 40,
+      "screen_shake": 0.3,
+      "zoom_punch": 0.06,
+      "chromatic_aberration": 0.55,
+      "flash_color": "#00ffcc",
+      "flash_ms": 50,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "slash_ribbon",
+      "impact_particles": [
+        {
+          "id": "neon_star",
+          "count": 40,
+          "spread_deg": 360,
+          "speed": 6.0,
+          "lifetime_ms": 280,
+          "color": "#00ffaa",
+          "blend": "add"
+        },
+        {
+          "id": "scan_ray",
+          "count": 8,
+          "spread_deg": 45,
+          "speed": 10.0,
+          "lifetime_ms": 120,
+          "color": "#ff00ff",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.8,
+        "follow_lag": 0.09,
+        "fov_kick_deg": 1.8
+      },
+      "audio": {
+        "impact": "hit_synth",
+        "stinger": "arcade_coin"
+      },
+      "haptics": {
+        "light_ms": 10,
+        "heavy_ms": 28,
+        "pattern": "double"
+      },
+      "satisfiers": [
+        "combo_counter",
+        "hit_confirm_ping",
+        "entropy_spark",
+        "aoe_ring_expand"
+      ],
+      "effects": [
+        {
+          "id": "palette_invert_flash",
+          "trigger": "on_crit",
+          "duration_ms": 80,
+          "intensity": 0.35,
+          "visual": "invert_flash"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "neon_arcade",
+    "title": "Neon arcade overload",
+    "tags": [
+      "arcade",
+      "stylized",
+      "high_fx"
+    ],
+    "hit_stop_ms": 40,
+    "screen_shake": 0.3,
+    "zoom_punch": 0.06,
+    "chromatic_aberration": 0.55,
+    "flash_color": "#00ffcc",
+    "flash_ms": 50,
+    "damage_number_style": "arcade_pop",
+    "trail_style": "slash_ribbon",
+    "impact_particles": [
+      {
+        "id": "neon_star",
+        "count": 40,
+        "spread_deg": 360,
+        "speed": 6.0,
+        "lifetime_ms": 280,
+        "color": "#00ffaa",
+        "blend": "add"
+      },
+      {
+        "id": "scan_ray",
+        "count": 8,
+        "spread_deg": 45,
+        "speed": 10.0,
+        "lifetime_ms": 120,
+        "color": "#ff00ff",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.8,
+      "follow_lag": 0.09,
+      "fov_kick_deg": 1.8
+    },
+    "audio": {
+      "impact": "hit_synth",
+      "stinger": "arcade_coin"
+    },
+    "haptics": {
+      "light_ms": 10,
+      "heavy_ms": 28,
+      "pattern": "double"
+    },
+    "satisfiers": [
+      "combo_counter",
+      "hit_confirm_ping",
+      "entropy_spark",
+      "aoe_ring_expand"
+    ],
+    "effects": [
+      {
+        "id": "palette_invert_flash",
+        "trigger": "on_crit",
+        "duration_ms": 80,
+        "intensity": 0.35,
+        "visual": "invert_flash"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: neon_arcade. Tags: arcade, stylized, high_fx.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

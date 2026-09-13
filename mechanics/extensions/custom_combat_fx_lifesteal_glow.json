@@ -1,0 +1,131 @@
+{
+  "id": "custom.combat_fx_lifesteal_glow",
+  "version": 1,
+  "title": "Combat FX \u2014 Lifesteal feedback stream",
+  "description": "Apply graphical combat profile \"lifesteal_glow\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.assist.enabled": true,
+    "verbs.assist.heal_amount": 12,
+    "presentation.combat": {
+      "profile_id": "lifesteal_glow",
+      "title": "Lifesteal feedback stream",
+      "tags": [
+        "sustain",
+        "assist",
+        "readable"
+      ],
+      "hit_stop_ms": 22,
+      "screen_shake": 0.1,
+      "zoom_punch": 0.02,
+      "chromatic_aberration": 0.1,
+      "flash_color": "#66ff99",
+      "flash_ms": 30,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "heal_mote",
+          "count": 14,
+          "spread_deg": 60,
+          "speed": 2.5,
+          "lifetime_ms": 450,
+          "color": "#44ff88",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.9,
+        "follow_lag": 0.06,
+        "fov_kick_deg": 0.6
+      },
+      "audio": {
+        "impact": "hit_wet",
+        "stinger": "heal_chime"
+      },
+      "haptics": {
+        "light_ms": 9,
+        "heavy_ms": 18,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "lifesteal_stream",
+        "stamina_tick",
+        "hit_confirm_ping"
+      ],
+      "effects": [
+        {
+          "id": "hp_stream",
+          "trigger": "on_hit",
+          "duration_ms": 500,
+          "intensity": 0.65,
+          "visual": "particles_target_to_attacker"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "lifesteal_glow",
+    "title": "Lifesteal feedback stream",
+    "tags": [
+      "sustain",
+      "assist",
+      "readable"
+    ],
+    "hit_stop_ms": 22,
+    "screen_shake": 0.1,
+    "zoom_punch": 0.02,
+    "chromatic_aberration": 0.1,
+    "flash_color": "#66ff99",
+    "flash_ms": 30,
+    "damage_number_style": "arcade_pop",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "heal_mote",
+        "count": 14,
+        "spread_deg": 60,
+        "speed": 2.5,
+        "lifetime_ms": 450,
+        "color": "#44ff88",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.9,
+      "follow_lag": 0.06,
+      "fov_kick_deg": 0.6
+    },
+    "audio": {
+      "impact": "hit_wet",
+      "stinger": "heal_chime"
+    },
+    "haptics": {
+      "light_ms": 9,
+      "heavy_ms": 18,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "lifesteal_stream",
+      "stamina_tick",
+      "hit_confirm_ping"
+    ],
+    "effects": [
+      {
+        "id": "hp_stream",
+        "trigger": "on_hit",
+        "duration_ms": 500,
+        "intensity": 0.65,
+        "visual": "particles_target_to_attacker"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: lifesteal_glow. Tags: sustain, assist, readable.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

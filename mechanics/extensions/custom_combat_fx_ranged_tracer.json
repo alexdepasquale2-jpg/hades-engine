@@ -1,0 +1,143 @@
+{
+  "id": "custom.combat_fx_ranged_tracer",
+  "version": 1,
+  "title": "Combat FX \u2014 Ranged hit tracer",
+  "description": "Apply graphical combat profile \"ranged_tracer\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.range_m": 14,
+    "verbs.attack.damage": 28,
+    "presentation.combat": {
+      "profile_id": "ranged_tracer",
+      "title": "Ranged hit tracer",
+      "tags": [
+        "ranged",
+        "readable"
+      ],
+      "hit_stop_ms": 18,
+      "screen_shake": 0.08,
+      "zoom_punch": 0.01,
+      "chromatic_aberration": 0.05,
+      "flash_color": "#ffffaa",
+      "flash_ms": 20,
+      "damage_number_style": "minimal",
+      "trail_style": "motion_streak",
+      "impact_particles": [
+        {
+          "id": "muzzle_flash",
+          "count": 6,
+          "spread_deg": 25,
+          "speed": 2.0,
+          "lifetime_ms": 80,
+          "color": "#ffee88",
+          "blend": "add"
+        },
+        {
+          "id": "impact_puff",
+          "count": 10,
+          "spread_deg": 40,
+          "speed": 1.8,
+          "lifetime_ms": 150,
+          "color": "#cccccc",
+          "blend": "alpha"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.92,
+        "follow_lag": 0.06,
+        "fov_kick_deg": 0.5
+      },
+      "audio": {
+        "impact": "hit_projectile",
+        "whoosh": "shot_crack"
+      },
+      "haptics": {
+        "light_ms": 6,
+        "heavy_ms": 12,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "hit_confirm_ping"
+      ],
+      "effects": [
+        {
+          "id": "beam_trail",
+          "trigger": "windup_start",
+          "duration_ms": 120,
+          "intensity": 0.8,
+          "visual": "line_tracer_to_target"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "ranged_tracer",
+    "title": "Ranged hit tracer",
+    "tags": [
+      "ranged",
+      "readable"
+    ],
+    "hit_stop_ms": 18,
+    "screen_shake": 0.08,
+    "zoom_punch": 0.01,
+    "chromatic_aberration": 0.05,
+    "flash_color": "#ffffaa",
+    "flash_ms": 20,
+    "damage_number_style": "minimal",
+    "trail_style": "motion_streak",
+    "impact_particles": [
+      {
+        "id": "muzzle_flash",
+        "count": 6,
+        "spread_deg": 25,
+        "speed": 2.0,
+        "lifetime_ms": 80,
+        "color": "#ffee88",
+        "blend": "add"
+      },
+      {
+        "id": "impact_puff",
+        "count": 10,
+        "spread_deg": 40,
+        "speed": 1.8,
+        "lifetime_ms": 150,
+        "color": "#cccccc",
+        "blend": "alpha"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.92,
+      "follow_lag": 0.06,
+      "fov_kick_deg": 0.5
+    },
+    "audio": {
+      "impact": "hit_projectile",
+      "whoosh": "shot_crack"
+    },
+    "haptics": {
+      "light_ms": 6,
+      "heavy_ms": 12,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "hit_confirm_ping"
+    ],
+    "effects": [
+      {
+        "id": "beam_trail",
+        "trigger": "windup_start",
+        "duration_ms": 120,
+        "intensity": 0.8,
+        "visual": "line_tracer_to_target"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: ranged_tracer. Tags: ranged, readable.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

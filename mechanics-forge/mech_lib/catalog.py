@@ -208,6 +208,42 @@ ENGINE_CATALOG: list[MechanicEntry] = [
         None,
         True,
     ),
+    MechanicEntry(
+        "presentation.combat",
+        "combat",
+        "Combat presentation profile",
+        "Hit-stop, screen shake, particles, camera, audio, haptics, and satisfiers on attack connect (ruleset presentation.combat or extensions).",
+        "presentation.combat",
+        "Attack",
+        False,
+    ),
+    MechanicEntry(
+        "presentation.hit_stop",
+        "combat",
+        "Hit-stop / time freeze",
+        "Brief time scale dip on hit for tactile confirmation.",
+        "presentation.combat.hit_stop_ms",
+        "Attack",
+        False,
+    ),
+    MechanicEntry(
+        "presentation.satisfiers",
+        "combat",
+        "Combat satisfiers",
+        "Combo counters, parry rings, execute banners, entropy sparks, AoE rings, etc.",
+        "presentation.combat.satisfiers",
+        None,
+        False,
+    ),
+    MechanicEntry(
+        "extensions.combat_fx",
+        "combat",
+        "Combat FX extension packs",
+        "24 apply-ready profiles under mechanics/extensions/custom.combat_fx_*.json plus master library.",
+        None,
+        None,
+        False,
+    ),
 ]
 
 

@@ -1,0 +1,125 @@
+{
+  "id": "custom.combat_fx_silent_killer",
+  "version": 1,
+  "title": "Combat FX \u2014 Silent killer (audio-forward subtle FX)",
+  "description": "Apply graphical combat profile \"silent_killer\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.damage": 40,
+    "verbs.attack.harm_entropy": 0.4,
+    "presentation.combat": {
+      "profile_id": "silent_killer",
+      "title": "Silent killer (audio-forward subtle FX)",
+      "tags": [
+        "stealth",
+        "low_fx"
+      ],
+      "hit_stop_ms": 20,
+      "screen_shake": 0.03,
+      "zoom_punch": 0.01,
+      "chromatic_aberration": 0.02,
+      "flash_color": "#333333",
+      "flash_ms": 10,
+      "damage_number_style": "minimal",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "bloodless_mist",
+          "count": 8,
+          "spread_deg": 40,
+          "speed": 0.8,
+          "lifetime_ms": 400,
+          "color": "#444444",
+          "blend": "alpha"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.96,
+        "follow_lag": 0.03,
+        "fov_kick_deg": 0.2
+      },
+      "audio": {
+        "impact": "hit_whisper",
+        "whoosh": "knife_slice"
+      },
+      "haptics": {
+        "light_ms": 4,
+        "heavy_ms": 8,
+        "pattern": "single"
+      },
+      "satisfiers": [
+        "hit_confirm_ping"
+      ],
+      "effects": [
+        {
+          "id": "vignette_tight",
+          "trigger": "on_kill",
+          "duration_ms": 400,
+          "intensity": 0.3,
+          "visual": "vignette_brief"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "silent_killer",
+    "title": "Silent killer (audio-forward subtle FX)",
+    "tags": [
+      "stealth",
+      "low_fx"
+    ],
+    "hit_stop_ms": 20,
+    "screen_shake": 0.03,
+    "zoom_punch": 0.01,
+    "chromatic_aberration": 0.02,
+    "flash_color": "#333333",
+    "flash_ms": 10,
+    "damage_number_style": "minimal",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "bloodless_mist",
+        "count": 8,
+        "spread_deg": 40,
+        "speed": 0.8,
+        "lifetime_ms": 400,
+        "color": "#444444",
+        "blend": "alpha"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.96,
+      "follow_lag": 0.03,
+      "fov_kick_deg": 0.2
+    },
+    "audio": {
+      "impact": "hit_whisper",
+      "whoosh": "knife_slice"
+    },
+    "haptics": {
+      "light_ms": 4,
+      "heavy_ms": 8,
+      "pattern": "single"
+    },
+    "satisfiers": [
+      "hit_confirm_ping"
+    ],
+    "effects": [
+      {
+        "id": "vignette_tight",
+        "trigger": "on_kill",
+        "duration_ms": 400,
+        "intensity": 0.3,
+        "visual": "vignette_brief"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: silent_killer. Tags: stealth, low_fx.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

@@ -1,0 +1,129 @@
+{
+  "id": "custom.combat_fx_death_rewind_glitch",
+  "version": 1,
+  "title": "Combat FX \u2014 Death-near miss glitch",
+  "description": "Apply graphical combat profile \"death_rewind_glitch\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "death.rewind_s": 3,
+    "verbs.attack.harm_entropy": 0.65,
+    "presentation.combat": {
+      "profile_id": "death_rewind_glitch",
+      "title": "Death-near miss glitch",
+      "tags": [
+        "death",
+        "tension",
+        "pmr"
+      ],
+      "hit_stop_ms": 55,
+      "screen_shake": 0.28,
+      "zoom_punch": 0.05,
+      "chromatic_aberration": 0.5,
+      "flash_color": "#ff0000",
+      "flash_ms": 60,
+      "damage_number_style": "crit_gold",
+      "trail_style": "psi_afterimage",
+      "impact_particles": [
+        {
+          "id": "glitch_pixel",
+          "count": 30,
+          "spread_deg": 360,
+          "speed": 4.0,
+          "lifetime_ms": 200,
+          "color": "#ff3366",
+          "blend": "screen"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.7,
+        "follow_lag": 0.15,
+        "fov_kick_deg": 1.5
+      },
+      "audio": {
+        "impact": "hit_critical",
+        "stinger": "rewind_glitch"
+      },
+      "haptics": {
+        "light_ms": 15,
+        "heavy_ms": 40,
+        "pattern": "rumble_tail"
+      },
+      "satisfiers": [
+        "enemy_hit_flash",
+        "entropy_spark"
+      ],
+      "effects": [
+        {
+          "id": "scanline_burst",
+          "trigger": "on_crit",
+          "duration_ms": 150,
+          "intensity": 0.65,
+          "visual": "full_screen_glitch"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "death_rewind_glitch",
+    "title": "Death-near miss glitch",
+    "tags": [
+      "death",
+      "tension",
+      "pmr"
+    ],
+    "hit_stop_ms": 55,
+    "screen_shake": 0.28,
+    "zoom_punch": 0.05,
+    "chromatic_aberration": 0.5,
+    "flash_color": "#ff0000",
+    "flash_ms": 60,
+    "damage_number_style": "crit_gold",
+    "trail_style": "psi_afterimage",
+    "impact_particles": [
+      {
+        "id": "glitch_pixel",
+        "count": 30,
+        "spread_deg": 360,
+        "speed": 4.0,
+        "lifetime_ms": 200,
+        "color": "#ff3366",
+        "blend": "screen"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.7,
+      "follow_lag": 0.15,
+      "fov_kick_deg": 1.5
+    },
+    "audio": {
+      "impact": "hit_critical",
+      "stinger": "rewind_glitch"
+    },
+    "haptics": {
+      "light_ms": 15,
+      "heavy_ms": 40,
+      "pattern": "rumble_tail"
+    },
+    "satisfiers": [
+      "enemy_hit_flash",
+      "entropy_spark"
+    ],
+    "effects": [
+      {
+        "id": "scanline_burst",
+        "trigger": "on_crit",
+        "duration_ms": 150,
+        "intensity": 0.65,
+        "visual": "full_screen_glitch"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: death_rewind_glitch. Tags: death, tension, pmr.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

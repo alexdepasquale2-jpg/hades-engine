@@ -1,0 +1,149 @@
+{
+  "id": "custom.combat_fx_elemental_burst_fire",
+  "version": 1,
+  "title": "Combat FX \u2014 Fire burst on hit",
+  "description": "Apply graphical combat profile \"elemental_burst_fire\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.damage": 38,
+    "verbs.attack.range_m": 7,
+    "presentation.combat": {
+      "profile_id": "elemental_burst_fire",
+      "title": "Fire burst on hit",
+      "tags": [
+        "elemental",
+        "aoe",
+        "satisfying"
+      ],
+      "hit_stop_ms": 35,
+      "screen_shake": 0.25,
+      "zoom_punch": 0.05,
+      "chromatic_aberration": 0.15,
+      "flash_color": "#ff4400",
+      "flash_ms": 45,
+      "damage_number_style": "arcade_pop",
+      "trail_style": "ember_wake",
+      "impact_particles": [
+        {
+          "id": "ember_spray",
+          "count": 32,
+          "spread_deg": 70,
+          "speed": 3.5,
+          "lifetime_ms": 380,
+          "color": "#ff6622",
+          "blend": "add"
+        },
+        {
+          "id": "heat_haze",
+          "count": 8,
+          "spread_deg": 360,
+          "speed": 0.4,
+          "lifetime_ms": 700,
+          "color": "#ffaa44",
+          "blend": "screen"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.8,
+        "follow_lag": 0.09,
+        "fov_kick_deg": 1.4
+      },
+      "audio": {
+        "impact": "hit_fire_pop",
+        "sub_bass": "whoosh_flame"
+      },
+      "haptics": {
+        "light_ms": 14,
+        "heavy_ms": 30,
+        "pattern": "rumble_tail"
+      },
+      "satisfiers": [
+        "aoe_ring_expand",
+        "enemy_hit_flash",
+        "ground_scorch_decal"
+      ],
+      "effects": [
+        {
+          "id": "burn_overlay",
+          "trigger": "on_hit",
+          "duration_ms": 400,
+          "intensity": 0.4,
+          "visual": "rim_light_orange"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "elemental_burst_fire",
+    "title": "Fire burst on hit",
+    "tags": [
+      "elemental",
+      "aoe",
+      "satisfying"
+    ],
+    "hit_stop_ms": 35,
+    "screen_shake": 0.25,
+    "zoom_punch": 0.05,
+    "chromatic_aberration": 0.15,
+    "flash_color": "#ff4400",
+    "flash_ms": 45,
+    "damage_number_style": "arcade_pop",
+    "trail_style": "ember_wake",
+    "impact_particles": [
+      {
+        "id": "ember_spray",
+        "count": 32,
+        "spread_deg": 70,
+        "speed": 3.5,
+        "lifetime_ms": 380,
+        "color": "#ff6622",
+        "blend": "add"
+      },
+      {
+        "id": "heat_haze",
+        "count": 8,
+        "spread_deg": 360,
+        "speed": 0.4,
+        "lifetime_ms": 700,
+        "color": "#ffaa44",
+        "blend": "screen"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.8,
+      "follow_lag": 0.09,
+      "fov_kick_deg": 1.4
+    },
+    "audio": {
+      "impact": "hit_fire_pop",
+      "sub_bass": "whoosh_flame"
+    },
+    "haptics": {
+      "light_ms": 14,
+      "heavy_ms": 30,
+      "pattern": "rumble_tail"
+    },
+    "satisfiers": [
+      "aoe_ring_expand",
+      "enemy_hit_flash",
+      "ground_scorch_decal"
+    ],
+    "effects": [
+      {
+        "id": "burn_overlay",
+        "trigger": "on_hit",
+        "duration_ms": 400,
+        "intensity": 0.4,
+        "visual": "rim_light_orange"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: elemental_burst_fire. Tags: elemental, aoe, satisfying.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

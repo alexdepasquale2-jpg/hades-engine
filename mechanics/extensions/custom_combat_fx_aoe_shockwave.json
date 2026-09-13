@@ -1,0 +1,145 @@
+{
+  "id": "custom.combat_fx_aoe_shockwave",
+  "version": 1,
+  "title": "Combat FX \u2014 AoE shockwave ring",
+  "description": "Apply graphical combat profile \"aoe_shockwave\" plus tuned attack feel.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.range_m": 10,
+    "verbs.attack.damage": 30,
+    "presentation.combat": {
+      "profile_id": "aoe_shockwave",
+      "title": "AoE shockwave ring",
+      "tags": [
+        "aoe",
+        "crowd",
+        "satisfying"
+      ],
+      "hit_stop_ms": 42,
+      "screen_shake": 0.38,
+      "zoom_punch": 0.07,
+      "chromatic_aberration": 0.18,
+      "flash_color": "#eeddff",
+      "flash_ms": 40,
+      "damage_number_style": "combo_stack",
+      "trail_style": "none",
+      "impact_particles": [
+        {
+          "id": "ring_particle",
+          "count": 48,
+          "spread_deg": 360,
+          "speed": 6.5,
+          "lifetime_ms": 400,
+          "color": "#bbaaff",
+          "blend": "add"
+        }
+      ],
+      "camera": {
+        "shake_decay": 0.78,
+        "follow_lag": 0.11,
+        "fov_kick_deg": 2.0
+      },
+      "audio": {
+        "impact": "aoe_thump",
+        "sub_bass": "shockwave_sub"
+      },
+      "haptics": {
+        "light_ms": 15,
+        "heavy_ms": 45,
+        "pattern": "rumble_tail"
+      },
+      "satisfiers": [
+        "aoe_ring_expand",
+        "combo_counter",
+        "enemy_hit_flash"
+      ],
+      "effects": [
+        {
+          "id": "expanding_ring",
+          "trigger": "on_aoe_peak",
+          "duration_ms": 350,
+          "intensity": 0.85,
+          "visual": "shader_ring_world_space"
+        },
+        {
+          "id": "hit_stop_stagger",
+          "trigger": "on_hit",
+          "duration_ms": 30,
+          "intensity": 0.4,
+          "visual": "stagger_enemies_in_radius"
+        }
+      ]
+    }
+  },
+  "combat_presentation": {
+    "profile_id": "aoe_shockwave",
+    "title": "AoE shockwave ring",
+    "tags": [
+      "aoe",
+      "crowd",
+      "satisfying"
+    ],
+    "hit_stop_ms": 42,
+    "screen_shake": 0.38,
+    "zoom_punch": 0.07,
+    "chromatic_aberration": 0.18,
+    "flash_color": "#eeddff",
+    "flash_ms": 40,
+    "damage_number_style": "combo_stack",
+    "trail_style": "none",
+    "impact_particles": [
+      {
+        "id": "ring_particle",
+        "count": 48,
+        "spread_deg": 360,
+        "speed": 6.5,
+        "lifetime_ms": 400,
+        "color": "#bbaaff",
+        "blend": "add"
+      }
+    ],
+    "camera": {
+      "shake_decay": 0.78,
+      "follow_lag": 0.11,
+      "fov_kick_deg": 2.0
+    },
+    "audio": {
+      "impact": "aoe_thump",
+      "sub_bass": "shockwave_sub"
+    },
+    "haptics": {
+      "light_ms": 15,
+      "heavy_ms": 45,
+      "pattern": "rumble_tail"
+    },
+    "satisfiers": [
+      "aoe_ring_expand",
+      "combo_counter",
+      "enemy_hit_flash"
+    ],
+    "effects": [
+      {
+        "id": "expanding_ring",
+        "trigger": "on_aoe_peak",
+        "duration_ms": 350,
+        "intensity": 0.85,
+        "visual": "shader_ring_world_space"
+      },
+      {
+        "id": "hit_stop_stagger",
+        "trigger": "on_hit",
+        "duration_ms": 30,
+        "intensity": 0.4,
+        "visual": "stagger_enemies_in_radius"
+      }
+    ]
+  },
+  "design_notes": [
+    "Profile: aoe_shockwave. Tags: aoe, crowd, satisfying.",
+    "Merge into draft in Mechanics Forge \u2192 Extensions \u2192 Apply patches to ruleset draft."
+  ],
+  "compatible_rulesets": [
+    "pmr.v1"
+  ]
+}

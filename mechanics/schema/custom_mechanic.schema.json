@@ -29,6 +29,10 @@
     "compatible_rulesets": {
       "type": "array",
       "items": { "type": "string" }
+    },
+    "combat_presentation": {
+      "description": "Client-facing combat juice profile or preset library (see mechanics/catalog/combat_fx_presets.json).",
+      "type": "object"
     }
   }
 }
