@@ -4,8 +4,12 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
+import sys
 import time
+import urllib.error
+import urllib.request
 import uuid
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -16,6 +20,68 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(__file__).resolve().parent / ".data"
 HISTORY_FILE = DATA_DIR / "history.json"
 MAX_HISTORY = 200
+
+
+class ToolchainError(RuntimeError):
+    """Required CLI tool (cargo, git, etc.) is not available."""
+
+
+def _extra_bin_dirs() -> list[Path]:
+    dirs: list[Path] = []
+    home = Path.home()
+    dirs.append(home / ".cargo" / "bin")
+    if sys.platform == "win32":
+        local = os.environ.get("LOCALAPPDATA")
+        if local:
+            dirs.append(Path(local) / "cargo" / "bin")
+    return dirs
+
+
+def find_executable(name: str) -> str | None:
+    found = shutil.which(name)
+    if found:
+        return found
+    suffix = ".exe" if sys.platform == "win32" else ""
+    for directory in _extra_bin_dirs():
+        candidate = directory / f"{name}{suffix}"
+        if candidate.is_file():
+            return str(candidate)
+    return None
+
+
+def is_streamlit_cloud() -> bool:
+    if os.environ.get("STREAMLIT_RUNTIME_ENV") == "cloud":
+        return True
+    root = REPO_ROOT.as_posix()
+    return root.startswith("/mount/src/")
+
+
+def cargo_available() -> bool:
+    return find_executable("cargo") is not None
+
+
+def toolchain_hint() -> str:
+    if is_streamlit_cloud():
+        return (
+            "This hosted Streamlit app cannot run `cargo` (no Rust toolchain in the cloud "
+            "runtime). Use the **GitHub CI** tab to track builds, or run the dashboard "
+            "on your PC with `run-dashboard.bat` to execute tests and builds locally."
+        )
+    return (
+        "Install the [Rust toolchain](https://rustup.rs/) and ensure `cargo` is on your PATH, "
+        "then restart the dashboard. On Windows, open a new terminal after installing rustup."
+    )
+
+
+def resolve_command(command: list[str]) -> list[str]:
+    if not command:
+        raise ToolchainError("Empty command.")
+    exe = find_executable(command[0])
+    if exe is None:
+        raise ToolchainError(
+            f"Cannot find `{command[0]}` on PATH. {toolchain_hint()}"
+        )
+    return [exe, *command[1:]]
 
 
 @dataclass
@@ -118,10 +184,14 @@ def append_record(record: RunRecord) -> None:
 
 
 def git_info() -> tuple[str, str, bool]:
+    git = find_executable("git")
+    if not git:
+        return "unknown", "unknown", False
+
     def run(args: list[str]) -> str:
         try:
             out = subprocess.run(
-                args,
+                [git, *args],
                 cwd=REPO_ROOT,
                 capture_output=True,
                 text=True,
@@ -132,9 +202,9 @@ def git_info() -> tuple[str, str, bool]:
         except (subprocess.TimeoutExpired, OSError):
             return ""
 
-    branch = run(["git", "rev-parse", "--abbrev-ref", "HEAD"]) or "unknown"
-    sha = run(["git", "rev-parse", "--short", "HEAD"]) or "unknown"
-    dirty = bool(run(["git", "status", "--porcelain"]))
+    branch = run(["rev-parse", "--abbrev-ref", "HEAD"]) or "unknown"
+    sha = run(["rev-parse", "--short", "HEAD"]) or "unknown"
+    dirty = bool(run(["status", "--porcelain"]))
     return branch, sha, dirty
 
 
@@ -143,14 +213,19 @@ def stream_command(
     on_line: Callable[[str], None] | None = None,
     env_extra: dict[str, str] | None = None,
 ) -> tuple[int, str]:
+    resolved = resolve_command(command)
     env = os.environ.copy()
     env.setdefault("CARGO_TERM_COLOR", "always")
     env.setdefault("RUST_BACKTRACE", "1")
+    cargo_home = find_executable("cargo")
+    if cargo_home:
+        cargo_bin = str(Path(cargo_home).parent)
+        env["PATH"] = cargo_bin + os.pathsep + env.get("PATH", "")
     if env_extra:
         env.update(env_extra)
 
     proc = subprocess.Popen(
-        command,
+        resolved,
         cwd=REPO_ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -226,10 +301,13 @@ def job_by_id(job_id: str) -> JobDef | None:
 
 
 def gh_ci_runs(limit: int = 8) -> list[dict] | None:
+    gh = find_executable("gh")
+    if not gh:
+        return None
     try:
         out = subprocess.run(
             [
-                "gh",
+                gh,
                 "run",
                 "list",
                 "--workflow",
@@ -250,3 +328,70 @@ def gh_ci_runs(limit: int = 8) -> list[dict] | None:
         return json.loads(out.stdout or "[]")
     except (subprocess.TimeoutExpired, OSError, json.JSONDecodeError):
         return None
+
+
+def _github_repo_slug() -> str:
+    git = find_executable("git")
+    if git:
+        try:
+            out = subprocess.run(
+                [git, "remote", "get-url", "origin"],
+                cwd=REPO_ROOT,
+                capture_output=True,
+                text=True,
+                timeout=15,
+                shell=False,
+            )
+            url = (out.stdout or "").strip()
+            if url.endswith(".git"):
+                url = url[:-4]
+            if "github.com" in url:
+                path = url.split("github.com", 1)[-1].strip(":/")
+                if path.count("/") >= 1:
+                    return path
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+    return "alexdepasquale2-jpg/hades-engine"
+
+
+def github_api_ci_runs(limit: int = 8) -> list[dict] | None:
+    repo = _github_repo_slug()
+    url = (
+        f"https://api.github.com/repos/{repo}/actions/workflows/ci.yml/runs"
+        f"?per_page={limit}"
+    )
+    req = urllib.request.Request(
+        url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "User-Agent": "hades-engine-dashboard",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode())
+    except (urllib.error.URLError, json.JSONDecodeError, OSError):
+        return None
+    runs: list[dict] = []
+    for item in data.get("workflow_runs", []):
+        runs.append(
+            {
+                "conclusion": item.get("conclusion"),
+                "status": item.get("status"),
+                "headBranch": item.get("head_branch"),
+                "createdAt": item.get("created_at"),
+                "url": item.get("html_url"),
+            }
+        )
+    return runs
+
+
+def ci_runs(limit: int = 8) -> tuple[list[dict], str]:
+    """Return workflow runs and source label: gh, api, or none."""
+    via_gh = gh_ci_runs(limit)
+    if via_gh is not None:
+        return via_gh, "gh"
+    via_api = github_api_ci_runs(limit)
+    if via_api is not None:
+        return via_api, "api"
+    return [], "none"

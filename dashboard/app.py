@@ -8,12 +8,16 @@ from runner import (
     CI_JOBS,
     EXTRA_JOBS,
     REPO_ROOT,
+    ToolchainError,
+    cargo_available,
     git_info,
-    gh_ci_runs,
+    ci_runs,
+    is_streamlit_cloud,
     job_by_id,
     load_history,
     run_ci_pipeline,
     run_job,
+    toolchain_hint,
 )
 
 st.set_page_config(
@@ -40,6 +44,15 @@ recent = list(reversed(history[-30:]))
 st.title("Hades Engine — Dev Dashboard")
 st.caption(f"Repo: `{REPO_ROOT}`")
 
+can_run_jobs = cargo_available()
+if not can_run_jobs:
+    st.warning(toolchain_hint())
+elif is_streamlit_cloud():
+    st.info(
+        "Hosted view: use **GitHub CI** for remote build status. "
+        "Run jobs locally with `run-dashboard.bat` on your machine."
+    )
+
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("Branch", branch)
 col2.metric("Commit", sha)
@@ -56,17 +69,32 @@ side = st.sidebar
 side.header("Run jobs")
 side.markdown("Matches [`.github/workflows/ci.yml`](.github/workflows/ci.yml) order.")
 
-if side.button("Run full CI pipeline", type="primary", use_container_width=True):
+if side.button(
+    "Run full CI pipeline",
+    type="primary",
+    use_container_width=True,
+    disabled=not can_run_jobs,
+):
     st.session_state["pending_run"] = ("ci", None)
 
 side.markdown("**CI steps**")
 for job in CI_JOBS:
-    if side.button(job.label, key=f"btn_{job.id}", use_container_width=True):
+    if side.button(
+        job.label,
+        key=f"btn_{job.id}",
+        use_container_width=True,
+        disabled=not can_run_jobs,
+    ):
         st.session_state["pending_run"] = ("single", job.id)
 
 side.markdown("**Extra**")
 for job in EXTRA_JOBS:
-    if side.button(job.label, key=f"btn_x_{job.id}", use_container_width=True):
+    if side.button(
+        job.label,
+        key=f"btn_x_{job.id}",
+        use_container_width=True,
+        disabled=not can_run_jobs,
+    ):
         st.session_state["pending_run"] = ("single", job.id)
 
 if side.button("Clear session log", use_container_width=True):
@@ -115,11 +143,15 @@ with tab_history:
                 st.code(recent[0].get("log_tail", ""), language="text")
 
 with tab_remote:
-    runs = gh_ci_runs()
-    if runs is None:
+    runs, source = ci_runs()
+    if source == "api":
+        st.caption("Loaded via GitHub API (public workflow runs).")
+    elif source == "gh":
+        st.caption("Loaded via `gh` CLI.")
+    if source == "none":
         st.warning(
-            "Could not load GitHub Actions runs. Install [GitHub CLI](https://cli.github.com/) "
-            "and run `gh auth login`, or check network access."
+            "Could not load GitHub Actions runs. Check network access, or install "
+            "[GitHub CLI](https://cli.github.com/) locally and run `gh auth login`."
         )
     elif not runs:
         st.info("No workflow runs returned for ci.yml.")
@@ -150,17 +182,21 @@ with tab_help:
         Each job appends to `dashboard/.data/history.json` (gitignored): time, pass/fail,
         duration, git branch/SHA, and the tail of the log output.
 
-        ### Requirements
+        ### Requirements (local job runs)
 
         - [Rust toolchain](https://rustup.rs/) (`cargo` on PATH)
         - Python 3.10+
-        - Optional: `gh` for the GitHub CI tab
+
+        **Streamlit Cloud** can show GitHub CI status but cannot run `cargo` in the hosted
+        environment — use `run-dashboard.bat` on your PC for tests and builds.
         """
     )
 
 pending = st.session_state.pop("pending_run", None)
 
-if pending:
+if pending and not can_run_jobs:
+    st.error(toolchain_hint())
+elif pending:
     run_mode, run_job_id = pending
     st.divider()
     st.subheader("Live run")
@@ -181,7 +217,11 @@ if pending:
         def on_job_start(job) -> None:
             append_line(f"\n=== {job.label} ===\n")
 
-        results = run_ci_pipeline(on_line=append_line, on_job_start=on_job_start)
+        try:
+            results = run_ci_pipeline(on_line=append_line, on_job_start=on_job_start)
+        except ToolchainError as exc:
+            status_box.error(str(exc))
+            results = []
         st.session_state["last_results"] = results
         failed = [r for r in results if not r.success]
         if failed:
@@ -198,12 +238,19 @@ if pending:
             status_box.error("Unknown job.")
         else:
             status_box.info(f"Running: {job.label}")
-            record = run_job(job, on_line=append_line)
-            st.session_state["last_results"] = [record]
-            if record.success:
-                status_box.success(f"{job.label} passed ({record.duration_sec}s)")
+            try:
+                record = run_job(job, on_line=append_line)
+            except ToolchainError as exc:
+                status_box.error(str(exc))
+                record = None
+            if record is None:
+                pass
             else:
-                status_box.error(
-                    f"{job.label} failed (exit {record.exit_code}, {record.duration_sec}s)"
-                )
-            st.code(record.log_tail or "\n".join(lines[-200:]), language="text")
+                st.session_state["last_results"] = [record]
+                if record.success:
+                    status_box.success(f"{job.label} passed ({record.duration_sec}s)")
+                else:
+                    status_box.error(
+                        f"{job.label} failed (exit {record.exit_code}, {record.duration_sec}s)"
+                    )
+                st.code(record.log_tail or "\n".join(lines[-200:]), language="text")
