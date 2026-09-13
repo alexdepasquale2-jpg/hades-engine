@@ -1,0 +1,28 @@
+{
+  "id": "pickup.shard",
+  "version": 1,
+  "display_name": "Shard",
+  "kind": "pickup",
+  "tags": [],
+  "interactable": true,
+  "transform_default": {
+    "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "rotation": 0.0
+  },
+  "avatar": {
+    "hp": 1,
+    "stamina": 0
+  },
+  "brain": {
+    "kind": "Utility",
+    "seed": 1
+  },
+  "sprite": {
+    "path": "sprites/shard.png",
+    "size": 32
+  }
+}

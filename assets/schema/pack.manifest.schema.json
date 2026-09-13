@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hades-engine.local/schema/pack.manifest.schema.json",
+  "title": "TBC content pack manifest",
+  "type": "object",
+  "required": ["id", "version", "title", "ruleset_id", "entities"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^pack\\.[a-z][a-z0-9._-]*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "ruleset_id": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "entities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "minItems": 0
+    }
+  }
+}

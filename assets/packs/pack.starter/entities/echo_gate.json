@@ -1,0 +1,28 @@
+{
+  "id": "prop.echo_gate",
+  "version": 1,
+  "display_name": "Echo Gate",
+  "kind": "prop",
+  "tags": [],
+  "interactable": true,
+  "transform_default": {
+    "position": {
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.0
+    },
+    "rotation": 0.0
+  },
+  "avatar": {
+    "hp": 1,
+    "stamina": 0
+  },
+  "brain": {
+    "kind": "Utility",
+    "seed": 1
+  },
+  "sprite": {
+    "path": "sprites/echo_gate.png",
+    "size": 32
+  }
+}

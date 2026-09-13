@@ -1,0 +1,12 @@
+{
+  "id": "pack.starter",
+  "version": 1,
+  "title": "Starter slice",
+  "ruleset_id": "pmr.v1",
+  "description": "Tutorial NPCs and props for PMR-Prime.",
+  "entities": [
+    "entities/mentor.json",
+    "entities/echo_gate.json",
+    "entities/shard.json"
+  ]
+}

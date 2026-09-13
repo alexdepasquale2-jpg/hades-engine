@@ -3,3 +3,5 @@
 /data/
 /dashboard/.venv/
 /dashboard/.data/
+/asset-forge/.venv/
+**/__pycache__/

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://hades-engine.local/schema/entity.def.schema.json",
+  "title": "TBC entity definition",
+  "type": "object",
+  "required": ["id", "version", "display_name", "kind"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9._-]*$"
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "display_name": { "type": "string", "minLength": 1 },
+    "kind": { "enum": ["npc", "prop", "pickup", "player_spawn"] },
+    "tags": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "interactable": { "type": "boolean" },
+    "transform_default": {
+      "type": "object",
+      "required": ["position", "rotation"],
+      "properties": {
+        "position": {
+          "type": "object",
+          "required": ["x", "y", "z"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "z": { "type": "number" }
+          }
+        },
+        "rotation": { "type": "number" }
+      }
+    },
+    "avatar": {
+      "type": "object",
+      "properties": {
+        "hp": { "type": "number", "exclusiveMinimum": 0 },
+        "stamina": { "type": "number", "minimum": 0 }
+      }
+    },
+    "brain": {
+      "type": "object",
+      "required": ["kind", "seed"],
+      "properties": {
+        "kind": { "enum": ["Utility", "BehaviorTree", "Ml"] },
+        "seed": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "sprite": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "size": { "type": "integer", "minimum": 8, "maximum": 512 }
+      }
+    }
+  }
+}

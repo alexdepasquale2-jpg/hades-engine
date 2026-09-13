@@ -9,6 +9,16 @@ Rust library: AUM core, PMR/NPMR frames, entropy ledger, netcode rewind, shardin
 | `tbc-engine/` | Crate source, tests, `tick_step` bench |
 | `rulesets/*.json` | PMR / NPMR Academy / NPMR Dream rules |
 
+## Asset Forge
+
+Standalone tool to author **content packs** (entities, placeholder sprites, pack manifests) under `assets/`, and to fork or validate **ruleset** JSON.
+
+**Windows:** double-click [`run-asset-forge.bat`](run-asset-forge.bat) (port **8502**), or:
+
+```bash
+cd asset-forge && python cli.py init-starter && python cli.py validate
+```
+
 ## Local dev dashboard
 
 Track and run the same checks as CI from your machine (tests, release build, fmt, clippy, packaging dry-run). History is stored under `dashboard/.data/`.
