@@ -9,6 +9,20 @@ Rust library: AUM core, PMR/NPMR frames, entropy ledger, netcode rewind, shardin
 | `tbc-engine/` | Crate source, tests, `tick_step` bench |
 | `rulesets/*.json` | PMR / NPMR Academy / NPMR Dream rules |
 
+## Play the game (`tbc-play`)
+
+Native client that lists **all playable levels**: built-in ruleset sandboxes plus every content pack under `assets/packs/`.
+
+**Windows:** double-click [`run-play.bat`](run-play.bat), or:
+
+```bash
+cargo run -p tbc-game --release
+```
+
+Controls: **↑↓** level select · **Enter** play · **WASD** move · **E** interact · **Space** attack · **Esc** back to menu.
+
+Set `HADES_REPO_ROOT` if you launch the binary from outside the repo (must contain `assets/packs` and `rulesets`).
+
 ## Asset Forge
 
 Standalone **Asset Studio** to author full game assets in-app (procedural sprites, stats, placement, lore) and export content packs under `assets/`, plus ruleset fork/validate.

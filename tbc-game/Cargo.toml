@@ -1,0 +1,17 @@
+[package]
+name = "tbc-game"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Playable client for TBC content packs and ruleset worlds"
+publish = false
+
+[[bin]]
+name = "tbc-play"
+path = "src/main.rs"
+
+[dependencies]
+tbc-engine = { path = "../tbc-engine" }
+macroquad = "0.4.14"
+serde = { workspace = true }
+serde_json = { workspace = true }
