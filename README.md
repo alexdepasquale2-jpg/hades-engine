@@ -1,10 +1,10 @@
 # The Big Computer (TBC) Engine
 
-An MBT-native MMORPG engine implementing the architecture from **The Big Computer Engine Specification** — consciousness-first simulation where AUM_Core is authority, TBC renders PMR one Δt at a time, and the EntropyLedger is the private character sheet.
+An MBT-native MMORPG **simulation library** implementing the architecture from **The Big Computer Engine Specification** — consciousness-first simulation where AUM_Core is authority, TBC renders PMR one Δt at a time, and the EntropyLedger is the private character sheet.
 
-## What this repo implements
+This repository contains **`tbc-engine`** only: the deterministic core, rulesets, integration tests, and benchmarks. Host a game by linking this crate from your own server or client runtime.
 
-**M1–M18 vertical slice** of the spec:
+## What the library implements
 
 | Module | Spec section | Status |
 | --- | --- | --- |
@@ -26,143 +26,72 @@ An MBT-native MMORPG engine implementing the architecture from **The Big Compute
 | `query_psi` / `speak` | M15 | Ruleset-gated psi scopes + social broadcast |
 | `assist` | M16/M20 | Consent-gated heal + NPMR AI practice mode (intent queue) |
 | `speak` | M15/M20 | Ruleset-gated social broadcast (intent queue) |
-| `OpsSnapshot` | M12 | `/health`, `/ready`, Prometheus `/metrics` |
-| `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy |
-| Debug server | §10 | HTTP + WebSocket — cluster **6014** |
-| `tbc-sdk` | M17 | Typed HTTP client + wire protocol re-exports |
-| QUIC gateway | §10 M12 | TLS/mTLS QUIC **4433**, ops HTTP **9443** |
+| `OpsSnapshot` | M12 | Serializable health/ready/metrics snapshot (for your host) |
+| `Frame` PMR + NPMR | §4–6 | Dual PMR shards + NPMR Academy/Dream |
 
-## Quick start
+## Quick start (library)
 
-```bash
-cargo run -p tbc-server --release
+Add to your `Cargo.toml`:
+
+```toml
+tbc-engine = "0.1"
 ```
 
-Open **http://127.0.0.1:6014**
-
-Default soul archive: `data/tbc-archive.db` (override with `TBC_ARCHIVE_PATH`).
-
-Optional NATS JetStream RWW:
-
-```bash
-docker run --rm -p 4222:4222 nats:2.10 -js
-export TBC_NATS_URL=nats://127.0.0.1:4222
-cargo run -p tbc-server --release
-```
-
-Without `TBC_NATS_URL`, RWW stays in-memory (dev mode).
-
-### Multi-node PMR (M11)
-
-Run two shard processes sharing the same archive and NATS RWW:
-
-```bash
-docker run --rm -p 4222:4222 nats:2.10 -js
-export TBC_NATS_URL=nats://127.0.0.1:4222
-export TBC_ARCHIVE_PATH=data/tbc-archive.db
-
-TBC_SHARD_ID=0 cargo run -p tbc-server --release   # http://127.0.0.1:6020
-TBC_SHARD_ID=1 cargo run -p tbc-server --release   # http://127.0.0.1:6021
-```
-
-Walk east on shard-00 past the seam; the soul unbinds locally and rebinds on shard-01 via `rww.shard.cross`. Override port with `TBC_PORT`.
-
-Default cluster mode (no `TBC_SHARD_ID`) keeps in-process handoff on port **6014**.
-
-1. **Partition FWAU** — bind a new IUOC avatar on PMR shard-00 (west)
-2. **Resume soul** — after restart, resume the same IUOC from the archive (stored in browser localStorage)
-3. **WASD** — move; walk **east (→)** past the yellow seam at x=0 for shard handoff
-4. **Unbind / death** — experience packets persist; reincarnation offers use archived history
-5. **Enter NPMR-Academy** — frame handoff via RWW
-6. **B** — blink in NPMR · **F** strike · **E** interact · **G** assist (NPMR AI practice) · **T** speak · psi scopes
-
-### QUIC gateway (M12 production transport)
-
-```bash
-cargo run -p tbc-gateway --release
-```
-
-Listens on **quic://127.0.0.1:4433** (override with `TBC_QUIC_PORT`). Ops HTTP on **http://127.0.0.1:9443** (`/health`, `/ready`, `/metrics`).
-
-Production TLS — set PEM paths (omit for dev self-signed cert):
-
-```bash
-export TBC_TLS_CERT=/path/to/cert.pem
-export TBC_TLS_KEY=/path/to/key.pem
-# Optional mTLS:
-# export TBC_TLS_CLIENT_CA=/path/to/client-ca.pem
-./deploy/generate-dev-tls.sh deploy/tls
-```
-
-Shares `TBC_ARCHIVE_PATH` with the HTTP server. Supports `TBC_SHARD_ID` for shard-only gateway nodes.
-
-Smoke-test client:
-
-```bash
-cargo run -p tbc-gateway --release --example quic_client
-```
-
-### Ops endpoints (M12)
-
-| Endpoint | Server | Gateway ops |
-| --- | --- | --- |
-| `GET /health` | `:6014` | `:9443` |
-| `GET /ready` | `:6014` | `:9443` |
-| `GET /metrics` | `:6014` | `:9443` |
-
-See **ops/RUNBOOK.md** for probes, Docker Compose, and incident playbooks.
-
-### Docker Compose
-
-```bash
-cd deploy
-cp env.example .env
-./generate-dev-tls.sh tls
-docker compose up --build
-```
-
-### Run tests
+Or develop from this repo:
 
 ```bash
 cargo test -p tbc-engine
+cargo build -p tbc-engine --release
 ```
+
+Load rulesets from `rulesets/` (or your own paths) when constructing frames. Default archive path in tests is often a temp SQLite file; production hosts choose `SoulArchive` paths.
+
+Optional NATS JetStream for real-world-wide RWW (integration tests use `#[ignore]` unless NATS is up):
+
+```bash
+docker run --rm -p 4222:4222 nats:2.10 -js
+export TBC_NATS_URL=nats://127.0.0.1:4222
+cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
+```
+
+Without `TBC_NATS_URL`, `RwwBus` stays in-memory.
 
 ### Performance (release)
 
-The workspace uses **fat LTO**, **single codegen unit**, and **strip** in `[profile.release]`. Hot paths reuse tick scratch buffers (intents, poses, island positions), O(1) FWAU→avatar lookup, beam `mem::swap` instead of clone, and O(n) spatial island clustering.
+Release builds use **fat LTO**, **single codegen unit**, and **strip**. Hot paths reuse tick scratch buffers, O(1) FWAU→avatar lookup, beam `mem::swap`, and O(n) spatial island clustering.
 
 ```bash
 cargo bench -p tbc-engine --bench tick_step
 # Example: ~1300+ sim ticks/s with 200 awake AI on one PMR frame (release, hardware-dependent)
 ```
 
-35+ tests cover core simulation, M8–M16.
+### Tests
+
+35+ integration tests cover simulation, guardrails, persistence, sharding, gameplay rulesets, psi/social/consent, assist, and intent verbs:
 
 ```bash
+cargo test -p tbc-engine
 cargo test -p tbc-engine scale_guardrails
 cargo test -p tbc-engine persist_hydrate
 cargo test -p tbc-engine shard_multinode
-cargo test -p tbc-engine ops_health
 cargo test -p tbc-engine gameplay_ruleset
 cargo test -p tbc-engine npmr_dream
 cargo test -p tbc-engine consent_wire
 cargo test -p tbc-engine psi_social
 cargo test -p tbc-engine assist
 cargo test -p tbc-engine intent_verbs
-# With NATS running:
-cargo test -p tbc-engine nats_publish_roundtrip -- --ignored
 ```
 
 ## Architecture
 
 ```
-AUM_Core
+AUM_Core (tbc-engine)
 ├── SoulArchive (SQLite)   durable IUOC + experience packets (M9)
 ├── IUOCRegistry         hydrated from archive on boot
 ├── EntropyLedger        private quality scalar (S)
 ├── RwwBus               memory cache + NATS JetStream replication (M10)
-├── Frame PMR shard-00   Δt=50ms, x ∈ [-500, 50]  (or standalone node TBC_SHARD_ID=0)
-├── Frame PMR shard-01   Δt=50ms, x ∈ [-50, 500]  (or standalone node TBC_SHARD_ID=1)
+├── Frame PMR shard-00   Δt=50ms, x ∈ [-500, 50]
+├── Frame PMR shard-01   Δt=50ms, x ∈ [-50, 500]
 │   ├── IslandManager    clustering, observe-collapse, profiler
 │   ├── GuardrailState   rate limits + budget enforcement
 │   ├── NetcodeState     snapshot ring, rewind-replay
@@ -171,12 +100,12 @@ AUM_Core
 ├── Frame NPMR-Dream     Δt=200ms, looser ruleset, dream echoes
 └── Reincarnation planner  K=5 ranked packet templates
 
-Transport
-├── tbc-server           HTTP/WebSocket (debug UI) + /health /ready /metrics
-└── tbc-gateway          QUIC TLS/mTLS + ops HTTP :9443
+Wire helpers in `tbc_engine::transport` (QUIC/HTTP hosts build on these).
+M18: optional `consent` stamps on assist/speak payloads and `wire_to_intent()`.
+M20: Assist/Speak through netcode intent queue + rewind-replay.
 ```
 
-## Milestones
+## Milestones (engine)
 
 | Milestone | Status |
 | --- | --- |
@@ -191,25 +120,21 @@ Transport
 | M9 Persistent IUOC + experience archive | Done |
 | M10 Real RWW (NATS JetStream) | Done |
 | M11 Multi-node PMR sharding | Done |
-| M12 Production transport + ops | Done |
+| M12 Ops snapshot types + transport | Done |
 | M13 Gameplay depth (ruleset-driven) | Done |
 | M14 NPMR Dream + CRDT props + handoff policy | Done |
 | M15 Psi scopes + Speak + Consent | Done |
 | M16 Consent-gated assist + CI | Done |
-| M17 Typed client SDK (`tbc-sdk`) | Done |
 | M18 Consent-stamped wire intents | Done |
 | M19 Release + crates.io publish | Done |
 | M20 Assist/Speak intent queue + rewind | Done |
 
-## Publishing (M19)
+## Publishing
 
-Published crates: **`tbc-engine`** (simulation core) and **`tbc-sdk`** (HTTP client). Application binaries `tbc-server` and `tbc-gateway` are workspace-only (`publish = false`).
+The published crate is **`tbc-engine`**.
 
 ```bash
-# Verify packaging locally (no token required)
 cargo publish -p tbc-engine --dry-run
-# After tbc-engine is on crates.io:
-cargo publish -p tbc-sdk --dry-run
 ```
 
 To publish from CI, add a `CARGO_REGISTRY_TOKEN` secret and push a version tag:
@@ -219,22 +144,11 @@ git tag v0.1.0
 git push origin v0.1.0
 ```
 
-The **Release** workflow runs tests, `cargo publish` for both crates, and creates a GitHub release with `CHANGELOG.md`. See [CHANGELOG.md](CHANGELOG.md) for version history.
-
-## Client SDK (M17–M18)
-
-Rust crate `tbc-sdk` wraps the debug HTTP API and re-exports QUIC wire types:
-
-```bash
-cargo run -p tbc-sdk --example http_demo
-# TBC_URL=http://127.0.0.1:6014 cargo run -p tbc-sdk --example http_demo
-```
-
-Browser: `web/sdk/tbc-client.js` — `TbcClient` class used by the debug UI.
-
-Wire message builders (`assist`, `speak`, `psi`, `handoff`, …) live in `tbc_engine::transport` for QUIC gateway clients. M18 adds optional `consent` stamps on `assist` / `speak` payloads and `wire_to_intent()` for `Verb::Assist` / `Verb::Speak`. M20 routes those verbs through the netcode intent buffer — `step_once` and rewind-replay apply them alongside Move/Blink.
+The **Release** workflow runs tests, publishes `tbc-engine`, and creates a GitHub release with `CHANGELOG.md`. See [CHANGELOG.md](CHANGELOG.md).
 
 ## Rulesets
+
+Shipped JSON (loaded by your host or tests):
 
 - `rulesets/pmr.v1.json` — tight PMR-Prime (20 Hz, gravity, conserved items)
 - `rulesets/npmr.academy.v1.json` — loose NPMR (blink, CRDT props)

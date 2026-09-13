@@ -20,18 +20,14 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Build workspace
-        run: cargo build --workspace --release
+      - name: Build tbc-engine (release)
+        run: cargo build -p tbc-engine --release
 
       - name: Test tbc-engine
         run: cargo test -p tbc-engine
 
-      - name: Test tbc-sdk
-        run: cargo test -p tbc-sdk
-
       - name: Verify tbc-engine packaging (dry-run)
         run: cargo publish -p tbc-engine --dry-run
-        # tbc-sdk is published after tbc-engine lands on crates.io (publish job below).
 
   publish:
     needs: verify
@@ -44,11 +40,6 @@ jobs:
 
       - name: Publish tbc-engine
         run: cargo publish -p tbc-engine --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-
-      - name: Publish tbc-sdk
-        run: cargo publish -p tbc-sdk --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 

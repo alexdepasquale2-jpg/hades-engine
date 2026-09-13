@@ -23,18 +23,14 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Build workspace
-        run: cargo build --workspace --release
+      - name: Build tbc-engine (release)
+        run: cargo build -p tbc-engine --release
 
       - name: Test tbc-engine
         run: cargo test -p tbc-engine
 
-      - name: Test tbc-sdk
-        run: cargo test -p tbc-sdk
-
       - name: Verify crate packaging (dry-run)
         run: cargo publish -p tbc-engine --dry-run
-        # tbc-sdk depends on tbc-engine from crates.io; SDK packaging is verified on release after engine publish.
 
       - name: Clippy (engine, warnings allowed)
         run: cargo clippy -p tbc-engine --all-targets
