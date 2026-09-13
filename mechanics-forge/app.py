@@ -54,7 +54,7 @@ tab_catalog, tab_designer, tab_custom, tab_export = st.tabs(
 
 with tab_catalog:
     st.subheader("Implemented in `tbc-engine`")
-    cat = st.selectbox("Category", ["all"] + categories())
+    cat = st.selectbox("Category", ["all"] + categories(), key="catalog_category")
     for m in by_category(cat if cat != "all" else None):
         status = "✅ engine" if m.engine_implemented else "⚠ partial"
         path = f"`{m.ruleset_path}`" if m.ruleset_path else "_(runtime only)_"
@@ -76,9 +76,9 @@ with tab_designer:
             st.rerun()
     with col_new:
         with st.form("new_ruleset"):
-            base = st.selectbox("Template", ids or ["pmr.v1"])
-            new_id = st.text_input("New id", value="pmr.custom.v1")
-            new_title = st.text_input("Title", value="My ruleset")
+            base = st.selectbox("Template", ids or ["pmr.v1"], key="new_ruleset_template")
+            new_id = st.text_input("New id", value="pmr.custom.v1", key="new_ruleset_id")
+            new_title = st.text_input("Title", value="My ruleset", key="new_ruleset_title")
             if st.form_submit_button("Create draft from template"):
                 st.session_state.draft = blank_from_template(base, new_id, new_title)
                 st.rerun()
@@ -87,22 +87,31 @@ with tab_designer:
 
     st.markdown("### Core")
     c1, c2, c3, c4 = st.columns(4)
-    ruleset_id = c1.text_input("Id", value=w["ruleset_id"])
-    title = c2.text_input("Title", value=w["title"])
-    tightness = c3.slider("Tightness", 0.0, 1.0, w["tightness"])
-    dt_ms = c4.number_input("dt_ms", min_value=16, max_value=500, value=w["dt_ms"])
+    ruleset_id = c1.text_input("Id", value=w["ruleset_id"], key="designer_ruleset_id")
+    title = c2.text_input("Title", value=w["title"], key="designer_title")
+    tightness = c3.slider("Tightness", 0.0, 1.0, w["tightness"], key="designer_tightness")
+    dt_ms = c4.number_input(
+        "dt_ms", min_value=16, max_value=500, value=w["dt_ms"], key="designer_dt_ms"
+    )
 
     st.markdown("### Motion")
     m1, m2, m3, m4 = st.columns(4)
-    gravity = m1.number_input("Gravity", value=w["gravity"], format="%.2f")
-    max_speed = m2.number_input("Max speed", value=w["max_speed"], format="%.1f")
-    air_control = m3.number_input("Air control", 0.0, 1.0, w["air_control"])
-    blink = m4.checkbox("Blink enabled", value=w["blink"])
+    gravity = m1.number_input(
+        "Gravity", value=w["gravity"], format="%.2f", key="designer_gravity"
+    )
+    max_speed = m2.number_input(
+        "Max speed", value=w["max_speed"], format="%.1f", key="designer_max_speed"
+    )
+    air_control = m3.number_input(
+        "Air control", 0.0, 1.0, w["air_control"], key="designer_air_control"
+    )
+    blink = m4.checkbox("Blink enabled", value=w["blink"], key="designer_blink")
     c_info_val = st.number_input(
         "c_info_m_s (0 = none)",
         min_value=0.0,
         value=float(w["c_info"] or 0.0),
         format="%.0f",
+        key="designer_c_info",
     )
     c_info = c_info_val if c_info_val > 0 else None
 
@@ -114,24 +123,32 @@ with tab_designer:
         index=["unique", "clone-tax", "unlimited"].index(w["cons_items"])
         if w["cons_items"] in ("unique", "clone-tax", "unlimited")
         else 0,
+        key="designer_cons_items",
     )
-    cons_currency = e2.text_input("Currency", value=w["cons_currency"])
+    cons_currency = e2.text_input("Currency", value=w["cons_currency"], key="designer_currency")
     clone_tax = None
     if cons_items == "clone-tax":
         clone_tax = e3.number_input(
             "Clone tax entropy",
             value=float(w["clone_tax"] or 0.002),
             format="%.4f",
+            key="designer_clone_tax",
         )
     d1, d2, d3 = st.columns(3)
-    death_unbind = d1.checkbox("Unbind on death", value=w["death_unbind"])
-    death_park = d2.number_input("Park (s)", min_value=0, value=w["death_park"])
-    death_rewind = d3.number_input("Rewind (s)", min_value=0, value=w["death_rewind"])
+    death_unbind = d1.checkbox("Unbind on death", value=w["death_unbind"], key="designer_death_unbind")
+    death_park = d2.number_input(
+        "Park (s)", min_value=0, value=w["death_park"], key="designer_death_park"
+    )
+    death_rewind = d3.number_input(
+        "Rewind (s)", min_value=0, value=w["death_rewind"], key="designer_death_rewind"
+    )
 
     st.markdown("### Psi & sleep")
     p1, p2 = st.columns(2)
-    psi_enabled = p1.checkbox("Psi enabled", value=w["psi_enabled"])
-    psi_cost = p1.number_input("Psi base cost", value=w["psi_cost"], format="%.4f")
+    psi_enabled = p1.checkbox("Psi enabled", value=w["psi_enabled"], key="designer_psi_enabled")
+    psi_cost = p1.number_input(
+        "Psi base cost", value=w["psi_cost"], format="%.4f", key="designer_psi_cost"
+    )
     psi_scopes = p2.multiselect(
         "Psi scopes",
         [
@@ -142,50 +159,58 @@ with tab_designer:
             "RwwQuery",
         ],
         default=[s for s in w["psi_scopes"] if s in PSI_SCOPES],
+        key="designer_psi_scopes",
     )
     s1, s2 = st.columns(2)
-    sleep_delay = s1.number_input("Sleep delay (s)", value=w["sleep_delay"])
-    sleep_kinematic = s2.checkbox("Kinematic wake", value=w["sleep_kinematic"])
+    sleep_delay = s1.number_input(
+        "Sleep delay (s)", value=w["sleep_delay"], key="designer_sleep_delay"
+    )
+    sleep_kinematic = s2.checkbox(
+        "Kinematic wake", value=w["sleep_kinematic"], key="designer_sleep_kinematic"
+    )
     handoff_targets = st.text_input(
         "Handoff targets (comma-separated ruleset ids)",
         value=w["handoff_targets"],
+        key="designer_handoff_targets",
     )
 
     st.markdown("### Verbs")
     with st.expander("Attack", expanded=True):
         a1, a2, a3 = st.columns(3)
         atk_enabled = a1.checkbox("Enabled", value=w["atk_enabled"], key="atk_en")
-        atk_damage = a2.number_input("Damage", value=w["atk_damage"])
-        atk_range = a3.number_input("Range (m)", value=w["atk_range"])
+        atk_damage = a2.number_input("Damage", value=w["atk_damage"], key="atk_damage")
+        atk_range = a3.number_input("Range (m)", value=w["atk_range"], key="atk_range")
         a4, a5 = st.columns(2)
-        atk_stamina = a4.number_input("Stamina cost", value=w["atk_stamina"])
-        atk_entropy = a5.number_input("Harm entropy", value=w["atk_entropy"])
+        atk_stamina = a4.number_input("Stamina cost", value=w["atk_stamina"], key="atk_stamina")
+        atk_entropy = a5.number_input("Harm entropy", value=w["atk_entropy"], key="atk_entropy")
     with st.expander("Interact"):
         i1, i2, i3 = st.columns(3)
         int_enabled = i1.checkbox("Enabled", value=w["int_enabled"], key="int_en")
-        int_range = i2.number_input("Range (m)", value=w["int_range"])
-        int_prefix = i3.text_input("Item prefix", value=w["int_prefix"])
+        int_range = i2.number_input("Range (m)", value=w["int_range"], key="int_range")
+        int_prefix = i3.text_input("Item prefix", value=w["int_prefix"], key="int_prefix")
     with st.expander("Speak"):
         sp1, sp2 = st.columns(2)
         spk_enabled = sp1.checkbox("Enabled", value=w["spk_enabled"], key="spk_en")
-        spk_range = sp2.number_input("Range (m)", value=w["spk_range"])
+        spk_range = sp2.number_input("Range (m)", value=w["spk_range"], key="spk_range")
     with st.expander("Assist"):
         as1, as2, as3 = st.columns(3)
         ast_enabled = as1.checkbox("Enabled", value=w["ast_enabled"], key="ast_en")
-        ast_range = as2.number_input("Range (m)", value=w["ast_range"])
-        ast_heal = as3.number_input("Heal amount", value=w["ast_heal"])
+        ast_range = as2.number_input("Range (m)", value=w["ast_range"], key="ast_range")
+        ast_heal = as3.number_input("Heal amount", value=w["ast_heal"], key="ast_heal")
         as4, as5, as6 = st.columns(3)
-        ast_stamina = as4.number_input("Stamina cost", value=w["ast_stamina"])
-        ast_entropy = as5.number_input("Aid entropy", value=w["ast_entropy"])
-        ast_ai = as6.checkbox("AI practice", value=w["ast_ai"])
+        ast_stamina = as4.number_input("Stamina cost", value=w["ast_stamina"], key="ast_stamina")
+        ast_entropy = as5.number_input("Aid entropy", value=w["ast_entropy"], key="ast_entropy")
+        ast_ai = as6.checkbox("AI practice", value=w["ast_ai"], key="ast_ai")
 
     st.markdown("### CRDT (optional)")
-    crdt_enabled = st.checkbox("Enable CRDT block", value=w["crdt_enabled"])
+    crdt_enabled = st.checkbox("Enable CRDT block", value=w["crdt_enabled"], key="designer_crdt_enabled")
     crdt_props, crdt_presence = w["crdt_props"], w["crdt_presence"]
     if crdt_enabled:
         c1, c2 = st.columns(2)
-        crdt_props = c1.text_input("Props model", value=w["crdt_props"])
-        crdt_presence = c2.text_input("Presence model", value=w["crdt_presence"])
+        crdt_props = c1.text_input("Props model", value=w["crdt_props"], key="designer_crdt_props")
+        crdt_presence = c2.text_input(
+            "Presence model", value=w["crdt_presence"], key="designer_crdt_presence"
+        )
 
     draft = sync_draft_from_widgets(
         st.session_state.draft,
@@ -248,6 +273,7 @@ with tab_custom:
             "Load extension",
             ext_paths,
             format_func=lambda p: p.stem,
+            key="ext_pick",
         )
         if st.button("Load extension into editor"):
             st.session_state.ext_draft = load_extension(pick_ext)
@@ -257,26 +283,36 @@ with tab_custom:
         st.session_state.ext_draft = new_extension("my_mechanic", "My Mechanic")
 
     ext = st.session_state.ext_draft
-    ext["id"] = st.text_input("Extension id", value=ext.get("id", "custom.my"))
-    ext["title"] = st.text_input("Title", value=ext.get("title", ""))
-    ext["description"] = st.text_area("Description", value=ext.get("description", ""))
-    ext["category"] = st.text_input("Category", value=ext.get("category", "custom"))
+    ext["id"] = st.text_input("Extension id", value=ext.get("id", "custom.my"), key="ext_id")
+    ext["title"] = st.text_input("Title", value=ext.get("title", ""), key="ext_title")
+    ext["description"] = st.text_area(
+        "Description", value=ext.get("description", ""), key="ext_description"
+    )
+    ext["category"] = st.text_input("Category", value=ext.get("category", "custom"), key="ext_category")
     ext["engine_status"] = st.selectbox(
         "Status",
         ["ruleset_patch", "design_only", "planned"],
         index=["ruleset_patch", "design_only", "planned"].index(
             ext.get("engine_status", "ruleset_patch")
         ),
+        key="ext_engine_status",
     )
     compat_str = st.text_input(
         "Compatible rulesets (comma)",
         value=", ".join(ext.get("compatible_rulesets", [])),
+        key="ext_compatible",
     )
     ext["compatible_rulesets"] = [x.strip() for x in compat_str.split(",") if x.strip()]
 
     st.markdown("**Patches** (dotted paths → values)")
     patches: dict = ext.setdefault("patches", {})
-    rows = st.number_input("Patch rows", min_value=1, max_value=20, value=max(3, len(patches) or 3))
+    rows = st.number_input(
+        "Patch rows",
+        min_value=1,
+        max_value=20,
+        value=max(3, len(patches) or 3),
+        key="ext_patch_rows",
+    )
     new_patches = {}
     existing_items = list(patches.items())
     for i in range(int(rows)):
@@ -296,6 +332,7 @@ with tab_custom:
     ext["design_notes"] = st.text_area(
         "Design notes (one per line)",
         value="\n".join(ext.get("design_notes", [])),
+        key="ext_design_notes",
     ).splitlines()
 
     st.session_state.ext_draft = ext
