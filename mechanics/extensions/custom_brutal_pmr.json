@@ -1,0 +1,19 @@
+{
+  "id": "custom.brutal_pmr",
+  "version": 1,
+  "title": "Brutal PMR",
+  "description": "Higher damage combat on PMR-Prime without forking the whole ruleset by hand.",
+  "category": "combat",
+  "engine_status": "ruleset_patch",
+  "patches": {
+    "verbs.attack.damage": 48,
+    "verbs.attack.stamina_cost": 16,
+    "verbs.attack.harm_entropy": 0.65,
+    "motion.max_speed": 6.5
+  },
+  "design_notes": [
+    "Tune down speed to keep lethal encounters readable.",
+    "Pair with pack.starter for mentor + gate tutorial."
+  ],
+  "compatible_rulesets": ["pmr.v1"]
+}

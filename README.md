@@ -23,6 +23,12 @@ Controls: **↑↓** level select · **Enter** play · **WASD** move · **E** in
 
 Set `HADES_REPO_ROOT` if you launch the binary from outside the repo (must contain `assets/packs` and `rulesets`).
 
+## Mechanics Forge
+
+Design **game mechanics**: browse what `tbc-engine` implements (verbs, motion, psi, death, handoffs), edit **ruleset JSON** visually, and save **custom extensions** (patch bundles + design notes) under `mechanics/extensions/`.
+
+**Windows:** double-click [`run-mechanics-forge.bat`](run-mechanics-forge.bat) (port **8503**).
+
 ## Asset Forge
 
 Standalone **Asset Studio** to author full game assets in-app (procedural sprites, stats, placement, lore) and export content packs under `assets/`, plus ruleset fork/validate.

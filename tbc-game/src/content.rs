@@ -20,15 +20,15 @@ struct Placement {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct EntityDef {
-    pub id: String,
-    pub display_name: String,
-    pub kind: String,
-    pub interactable: Option<bool>,
-    pub transform_default: Option<TransformDef>,
-    pub avatar: Option<AvatarDef>,
-    pub brain: Option<BrainDef>,
-    pub sprite: Option<SpriteDef>,
+struct EntityDef {
+    id: String,
+    display_name: String,
+    kind: String,
+    interactable: Option<bool>,
+    transform_default: Option<TransformDef>,
+    avatar: Option<AvatarDef>,
+    brain: Option<BrainDef>,
+    sprite: Option<SpriteDef>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,8 +57,8 @@ struct BrainDef {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct SpriteDef {
-    pub path: String,
+struct SpriteDef {
+    path: String,
 }
 
 pub struct SpawnResult {

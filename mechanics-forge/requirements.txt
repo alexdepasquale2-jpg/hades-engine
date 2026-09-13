@@ -1,0 +1,2 @@
+streamlit>=1.37.0
+jsonschema>=4.22.0

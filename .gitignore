@@ -4,4 +4,5 @@
 /dashboard/.venv/
 /dashboard/.data/
 /asset-forge/.venv/
+/mechanics-forge/.venv/
 **/__pycache__/
