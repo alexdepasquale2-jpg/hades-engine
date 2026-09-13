@@ -133,7 +133,7 @@ The workspace uses **fat LTO**, **single codegen unit**, and **strip** in `[prof
 
 ```bash
 cargo bench -p tbc-engine --bench tick_step
-# Example: ~600 ticks/s with 200 awake AI on a single PMR frame (hardware-dependent)
+# Example: ~1300+ sim ticks/s with 200 awake AI on one PMR frame (release, hardware-dependent)
 ```
 
 35+ tests cover core simulation, M8–M16.
