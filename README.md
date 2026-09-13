@@ -127,6 +127,15 @@ docker compose up --build
 cargo test -p tbc-engine
 ```
 
+### Performance (release)
+
+The workspace uses **fat LTO**, **single codegen unit**, and **strip** in `[profile.release]`. Hot paths reuse tick scratch buffers (intents, poses, island positions), O(1) FWAU→avatar lookup, beam `mem::swap` instead of clone, and O(n) spatial island clustering.
+
+```bash
+cargo bench -p tbc-engine --bench tick_step
+# Example: ~600 ticks/s with 200 awake AI on a single PMR frame (hardware-dependent)
+```
+
 35+ tests cover core simulation, M8–M16.
 
 ```bash

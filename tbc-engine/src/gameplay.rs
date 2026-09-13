@@ -338,15 +338,13 @@ impl Frame {
 
     pub fn regen_stamina(&mut self) {
         let regen = self.spec.ruleset.dt_ms as f32 / 1000.0 * 8.0;
-        for entity in self.world.all_entities() {
-            if let Some(rec) = self.world.get_mut(entity) {
-                if let Some(avatar) = &mut rec.avatar {
-                    if !avatar.dead {
-                        avatar.stamina = (avatar.stamina + regen).min(100.0);
-                    }
+        self.world.for_each_mut(|_entity, rec| {
+            if let Some(avatar) = &mut rec.avatar {
+                if !avatar.dead {
+                    avatar.stamina = (avatar.stamina + regen).min(100.0);
                 }
             }
-        }
+        });
     }
 
     pub fn process_pending_kills(&mut self) -> Vec<(FwauId, Option<IuocId>)> {

@@ -6,6 +6,70 @@ use std::collections::{HashMap, HashSet};
 pub const TARGET_ISLANDS: usize = 40;
 pub const LOOKAHEAD_M: f32 = 120.0;
 
+/// Grid-bucket + 8-neighbor flood fill — O(n) vs naive O(n²) greedy merge.
+fn spatial_clusters(awake_positions: &[(Entity, Vec3)]) -> Vec<Vec<(Entity, Vec3)>> {
+    if awake_positions.is_empty() {
+        return Vec::new();
+    }
+
+    let cell = LOOKAHEAD_M;
+    let mut cells: HashMap<(i32, i32), Vec<(Entity, Vec3)>> =
+        HashMap::with_capacity(awake_positions.len() / 4 + 1);
+    for &(entity, pos) in awake_positions {
+        let key = (
+            (pos.x / cell).floor() as i32,
+            (pos.y / cell).floor() as i32,
+        );
+        cells.entry(key).or_default().push((entity, pos));
+    }
+
+    let mut visited: HashSet<(i32, i32)> = HashSet::with_capacity(cells.len());
+    let mut components: Vec<Vec<(Entity, Vec3)>> = Vec::new();
+
+    for &key in cells.keys() {
+        if visited.contains(&key) {
+            continue;
+        }
+        let mut stack = vec![key];
+        let mut cluster = Vec::new();
+        while let Some(k) = stack.pop() {
+            if !visited.insert(k) {
+                continue;
+            }
+            if let Some(bucket) = cells.get(&k) {
+                cluster.extend_from_slice(bucket);
+            }
+            for dx in -1..=1 {
+                for dy in -1..=1 {
+                    if dx == 0 && dy == 0 {
+                        continue;
+                    }
+                    let nk = (k.0 + dx, k.1 + dy);
+                    if cells.contains_key(&nk) && !visited.contains(&nk) {
+                        stack.push(nk);
+                    }
+                }
+            }
+        }
+        if !cluster.is_empty() {
+            components.push(cluster);
+        }
+    }
+
+    while components.len() > TARGET_ISLANDS {
+        merge_smallest_two(&mut components);
+    }
+
+    components
+}
+
+fn merge_smallest_two(components: &mut Vec<Vec<(Entity, Vec3)>>) {
+    components.sort_by_key(|c| c.len());
+    let b = components.pop().unwrap();
+    let a = components.pop().unwrap();
+    components.push(a.into_iter().chain(b).collect());
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IslandProfiler {
     pub island_count: usize,
@@ -74,37 +138,17 @@ impl IslandManager {
         self.islands.clear();
         self.next_island_id = 1;
 
-        let mut clusters: Vec<Vec<(Entity, Vec3)>> = Vec::new();
-
+        let mut awake_positions: Vec<(Entity, Vec3)> =
+            Vec::with_capacity(positions.len().min(512));
         for &(entity, pos) in positions {
-            if !awake.contains(&entity) {
-                continue;
-            }
-            let mut merged = false;
-            for cluster in &mut clusters {
-                if let Some((_, center)) = cluster.first() {
-                    if pos.distance(center) <= LOOKAHEAD_M {
-                        cluster.push((entity, pos));
-                        merged = true;
-                        break;
-                    }
-                }
-            }
-            if !merged {
-                clusters.push(vec![(entity, pos)]);
+            if awake.contains(&entity) {
+                awake_positions.push((entity, pos));
             }
         }
 
-        // Merge clusters until we have at most TARGET_ISLANDS (greedy merge smallest)
-        while clusters.len() > TARGET_ISLANDS {
-            clusters.sort_by_key(|c| c.len());
-            let a = clusters.remove(0);
-            let b = clusters.remove(0);
-            let merged: Vec<(Entity, Vec3)> = a.into_iter().chain(b).collect();
-            clusters.push(merged);
-        }
+        let mut clusters = spatial_clusters(&awake_positions);
 
-        for cluster in clusters {
+        for cluster in clusters.drain(..) {
             let island_id = IslandId(self.next_island_id);
             self.next_island_id += 1;
 

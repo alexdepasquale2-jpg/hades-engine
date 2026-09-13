@@ -67,7 +67,7 @@ impl ProbabilitySurface {
     }
 
     pub fn advance_with_depth(&mut self, intent_action: Option<u8>, max_depth: u8) {
-        let mut candidates: Vec<Branch> = Vec::new();
+        let mut candidates: Vec<Branch> = Vec::with_capacity(BEAM_WIDTH * ACTION_FANOUT);
         self.steps_per_tick = 0;
         let depth = max_depth.min(self.depth);
 
@@ -78,9 +78,7 @@ impl ProbabilitySurface {
                     let action = a as u8;
                     let mut new_state = branch.state.clone();
                     step_island(&mut new_state, action);
-                    let w = branch.weight
-                        * ruleset_prob(action)
-                        * intent_bias(intent_action, action, d);
+                    let w = branch.weight * ruleset_prob(action) * intent_bias(intent_action, action, d);
 
                     if w < PRUNE_FLOOR {
                         continue;
@@ -98,7 +96,7 @@ impl ProbabilitySurface {
             }
             candidates.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
             candidates.truncate(BEAM_WIDTH);
-            self.beam = candidates.clone();
+            std::mem::swap(&mut self.beam, &mut candidates);
         }
     }
 

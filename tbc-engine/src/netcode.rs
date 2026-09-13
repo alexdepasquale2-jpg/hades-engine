@@ -72,11 +72,23 @@ impl NetcodeState {
         hash
     }
 
-    pub fn store_snapshot(&mut self, tick: Tick, poses: Vec<EntityPose>) {
+    pub fn store_snapshot(&mut self, tick: Tick, mut poses: Vec<EntityPose>) {
         let checksum = Self::checksum(&poses);
         let snap = TickSnapshot {
             tick,
             poses,
+            checksum,
+        };
+        self.ring[Self::ring_index(tick.0)] = Some(snap);
+        self.auth_tick = tick;
+    }
+
+    /// Reuse `poses` buffer across ticks (caller clears or we take empty vec back).
+    pub fn store_snapshot_reuse(&mut self, tick: Tick, poses: &mut Vec<EntityPose>) {
+        let checksum = Self::checksum(poses);
+        let snap = TickSnapshot {
+            tick,
+            poses: std::mem::take(poses),
             checksum,
         };
         self.ring[Self::ring_index(tick.0)] = Some(snap);
@@ -121,12 +133,18 @@ impl NetcodeState {
 
     pub fn pending_for_tick(&self, tick: Tick) -> Vec<Intent> {
         let mut out = Vec::new();
+        self.pending_for_tick_into(tick, &mut out);
+        out
+    }
+
+    pub fn pending_for_tick_into(&self, tick: Tick, out: &mut Vec<Intent>) {
+        out.clear();
+        let t = tick.0;
         for bucket in self.pending.values() {
-            if let Some(i) = bucket.get(&tick.0) {
+            if let Some(i) = bucket.get(&t) {
                 out.push(i.clone());
             }
         }
-        out
     }
 
     pub fn clear_pending_through(&mut self, tick: Tick) {
@@ -140,9 +158,7 @@ impl NetcodeState {
     }
 
     pub fn drain_corrections(&mut self) -> Vec<Correction> {
-        let c = self.corrections.clone();
-        self.corrections.clear();
-        c
+        std::mem::take(&mut self.corrections)
     }
 
     pub fn record_reject(&mut self, fwau: FwauId, reason: IntentReject) {
@@ -150,9 +166,7 @@ impl NetcodeState {
     }
 
     pub fn drain_rejects(&mut self) -> Vec<(FwauId, IntentReject)> {
-        let r = self.rejects.clone();
-        self.rejects.clear();
-        r
+        std::mem::take(&mut self.rejects)
     }
 }
 

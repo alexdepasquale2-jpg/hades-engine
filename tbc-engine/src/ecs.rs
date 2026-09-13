@@ -150,6 +150,56 @@ impl World {
             .collect()
     }
 
+    /// Zero-allocation iteration over live entities (hot path).
+    pub fn for_each_entity<F>(&self, mut f: F)
+    where
+        F: FnMut(Entity, &EntityRecord),
+    {
+        for slot in &self.entities {
+            if let Some(rec) = slot {
+                f(rec.entity, rec);
+            }
+        }
+    }
+
+    /// Awake entities only — avoids collecting a `Vec` per tick.
+    pub fn for_each_awake<F>(&self, mut f: F)
+    where
+        F: FnMut(Entity, &EntityRecord),
+    {
+        for slot in &self.entities {
+            if let Some(rec) = slot {
+                if rec.sleep.awake {
+                    f(rec.entity, rec);
+                }
+            }
+        }
+    }
+
+    pub fn for_each_awake_mut<F>(&mut self, mut f: F)
+    where
+        F: FnMut(Entity, &mut EntityRecord),
+    {
+        for slot in &mut self.entities {
+            if let Some(rec) = slot {
+                if rec.sleep.awake {
+                    f(rec.entity, rec);
+                }
+            }
+        }
+    }
+
+    pub fn for_each_mut<F>(&mut self, mut f: F)
+    where
+        F: FnMut(Entity, &mut EntityRecord),
+    {
+        for slot in &mut self.entities {
+            if let Some(rec) = slot {
+                f(rec.entity, rec);
+            }
+        }
+    }
+
     pub fn awake_entities(&self) -> Vec<Entity> {
         self.entities
             .iter()

@@ -130,6 +130,11 @@ pub struct Frame {
     pub pending_rww: Vec<RwwOutbox>,
     pub last_assist: HashMap<FwauId, AssistResult>,
     pub last_speak: HashMap<FwauId, SpeakResult>,
+    fwau_avatar: HashMap<FwauId, Entity>,
+    scratch_intents: Vec<Intent>,
+    scratch_poses: Vec<EntityPose>,
+    scratch_positions: Vec<(Entity, Vec3)>,
+    scratch_awake: HashSet<Entity>,
     sleep_delay_ticks: u64,
     player_last_pos: HashMap<FwauId, Vec3>,
     was_awake: HashSet<Entity>,
@@ -163,6 +168,11 @@ impl Frame {
             pending_rww: Vec::new(),
             last_assist: HashMap::new(),
             last_speak: HashMap::new(),
+            fwau_avatar: HashMap::new(),
+            scratch_intents: Vec::with_capacity(32),
+            scratch_poses: Vec::with_capacity(256),
+            scratch_positions: Vec::with_capacity(256),
+            scratch_awake: HashSet::new(),
             sleep_delay_ticks,
             player_last_pos: HashMap::new(),
             was_awake: HashSet::new(),
@@ -219,6 +229,7 @@ impl Frame {
             .bind_fwau(iuoc, fwau_id, avatar_ref, self.now())
             .map_err(|e| format!("{:?}", e))?;
 
+        self.fwau_avatar.insert(fwau_id, entity);
         Ok(fwau_id)
     }
 
@@ -300,21 +311,19 @@ impl Frame {
         }
         self.intent_queues.remove(&fwau);
         self.player_last_pos.remove(&fwau);
+        self.fwau_avatar.remove(&fwau);
     }
 
-    fn collect_poses(&self) -> Vec<EntityPose> {
-        self.world
-            .all_entities()
-            .iter()
-            .filter_map(|&e| {
-                self.world.get(e).map(|rec| EntityPose {
-                    entity: rec.entity,
-                    x: rec.transform.position.x,
-                    y: rec.transform.position.y,
-                    z: rec.transform.position.z,
-                })
-            })
-            .collect()
+    fn collect_poses_into(world: &World, out: &mut Vec<EntityPose>) {
+        out.clear();
+        world.for_each_entity(|entity, rec| {
+            out.push(EntityPose {
+                entity,
+                x: rec.transform.position.x,
+                y: rec.transform.position.y,
+                z: rec.transform.position.z,
+            });
+        });
     }
 
     fn apply_poses(&mut self, poses: &[EntityPose]) {
@@ -327,8 +336,9 @@ impl Frame {
     }
 
     fn store_tick_snapshot(&mut self, tick: Tick) {
-        let poses = self.collect_poses();
-        self.netcode.store_snapshot(tick, poses);
+        Self::collect_poses_into(&self.world, &mut self.scratch_poses);
+        self.netcode
+            .store_snapshot_reuse(tick, &mut self.scratch_poses);
     }
 
     fn rewind_replay(&mut self, from: Tick, iuoc: &IuocRegistry, ledger: &mut EntropyLedger) {
@@ -350,19 +360,20 @@ impl Frame {
             let intents = self.netcode.pending_for_tick(tick);
             self.apply_tick_intents(&intents, iuoc, ledger);
             self.integrate_physics(false);
-            let poses = self.collect_poses();
-            let cs = NetcodeState::checksum(&poses);
+            Self::collect_poses_into(&self.world, &mut self.scratch_poses);
+            let cs = NetcodeState::checksum(&self.scratch_poses);
             checksums.insert(t, cs);
             if t % 2 == 0 {
-                self.netcode.store_snapshot(tick, poses);
+                self.netcode
+                    .store_snapshot(tick, self.scratch_poses.clone());
             }
         }
 
-        let poses = self.collect_poses();
+        Self::collect_poses_into(&self.world, &mut self.scratch_poses);
         self.netcode.push_correction(Correction {
             from_tick: from.0,
             checksums,
-            poses,
+            poses: std::mem::take(&mut self.scratch_poses),
         });
     }
 
@@ -422,10 +433,10 @@ impl Frame {
         }
     }
 
-    fn integrate_physics(&mut self, advance_beams: bool) {
+    fn integrate_physics(&mut self, _advance_beams: bool) {
         let dt = self.spec.ruleset.dt_ms as f32 / 1000.0;
         let max_step = self.spec.ruleset.motion.max_speed * dt * 1.15;
-        let entities: Vec<Entity> = self.world.awake_entities();
+        let entities = self.world.awake_entities();
 
         for entity in entities {
             if let Some(rec) = self.world.get_mut(entity) {
@@ -453,7 +464,6 @@ impl Frame {
                     }
                 }
 
-                // Speed hack detection for FWAU avatars
                 if let Some(binding) = &rec.fwau_binding {
                     let dx = rec.transform.position.x - old.x;
                     let dy = rec.transform.position.y - old.y;
@@ -473,10 +483,6 @@ impl Frame {
                 self.grid
                     .on_move(entity, rec.transform.position, rec.interest_lod);
             }
-        }
-
-        if advance_beams {
-            // Beam advance handled by IslandManager in step_once
         }
     }
 
@@ -498,13 +504,17 @@ impl Frame {
         let tick = self.now();
         self.guardrails.begin_tick(self.spec.ruleset.dt_ms);
 
-        // Gather intents scheduled for this tick from netcode pending buffer
-        let mut all_intents = self.netcode.pending_for_tick(tick);
+        let mut all_intents = std::mem::take(&mut self.scratch_intents);
+        all_intents.clear();
+        self.netcode.pending_for_tick_into(tick, &mut all_intents);
         for queue in self.intent_queues.values_mut() {
             all_intents.extend(queue.drain_for_tick(tick));
         }
 
         self.apply_tick_intents(&all_intents, iuoc, ledger);
+        all_intents.clear();
+        self.scratch_intents = all_intents;
+
         self.integrate_physics(false);
         self.update_sleep_states();
         self.step_islands_and_observe();
@@ -517,33 +527,23 @@ impl Frame {
     }
 
     fn step_islands_and_observe(&mut self) {
-        let awake: HashSet<Entity> = self
-            .world
-            .all_entities()
-            .into_iter()
-            .filter(|e| self.world.get(*e).map(|r| r.sleep.awake).unwrap_or(false))
-            .collect();
+        self.scratch_awake.clear();
+        self.scratch_positions.clear();
 
-        for entity in &awake {
-            if !self.was_awake.contains(entity) {
-                self.island_mgr.queue_observe_entity(*entity);
+        for entity in self.world.awake_entities() {
+            if !self.was_awake.contains(&entity) {
+                self.island_mgr.queue_observe_entity(entity);
+            }
+            if let Some(rec) = self.world.get(entity) {
+                self.scratch_awake.insert(entity);
+                self.scratch_positions
+                    .push((entity, rec.transform.position));
             }
         }
-        self.was_awake = awake.clone();
+        std::mem::swap(&mut self.was_awake, &mut self.scratch_awake);
 
-        let positions: Vec<(Entity, Vec3)> = self
-            .world
-            .all_entities()
-            .iter()
-            .filter_map(|&e| {
-                self.world
-                    .get(e)
-                    .filter(|r| r.sleep.awake)
-                    .map(|r| (e, r.transform.position))
-            })
-            .collect();
-
-        self.island_mgr.rebuild_from_positions(&positions, &awake);
+        self.island_mgr
+            .rebuild_from_positions(&self.scratch_positions, &self.was_awake);
         let budget = self.guardrails.config.step_budget_per_tick;
         if self.island_mgr.advance_with_budget(None, budget, true) {
             self.guardrails.record_budget_overrun();
@@ -557,8 +557,8 @@ impl Frame {
             return;
         }
         let bounds = self.shard_bounds.as_ref().unwrap();
-        for fwau in self.intent_queues.keys().copied().collect::<Vec<_>>() {
-            if let Some(e) = self.find_avatar_for_fwau(fwau) {
+        for fwau in self.intent_queues.keys() {
+            if let Some(e) = self.find_avatar_for_fwau(*fwau) {
                 if let Some(rec) = self.world.get(e) {
                     let pos = rec.transform.position;
                     let target = if pos.x > bounds.max_x - bounds.overlap_m / 2.0 && bounds.id == 0
@@ -570,7 +570,7 @@ impl Frame {
                         bounds.id
                     };
                     if target != bounds.id {
-                        self.pending_shard_handoffs.push((fwau, target));
+                        self.pending_shard_handoffs.push((*fwau, target));
                     }
                 }
             }
@@ -610,16 +610,13 @@ impl Frame {
     }
 
     pub fn find_avatar_for_fwau(&self, fwau: FwauId) -> Option<Entity> {
-        for entity in self.world.all_entities() {
-            if let Some(rec) = self.world.get(entity) {
-                if let Some(binding) = &rec.fwau_binding {
-                    if binding.fwau_id == fwau {
-                        return Some(entity);
-                    }
-                }
+        self.fwau_avatar.get(&fwau).copied().and_then(|e| {
+            if self.world.get(e).is_some() {
+                Some(e)
+            } else {
+                None
             }
-        }
-        None
+        })
     }
 
     pub fn iuoc_for_fwau(&self, fwau: FwauId) -> Option<IuocId> {

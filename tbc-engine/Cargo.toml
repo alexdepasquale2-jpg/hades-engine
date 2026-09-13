@@ -27,3 +27,7 @@ futures-util = "0.3"
 tracing.workspace = true
 
 [dev-dependencies]
+
+[[bench]]
+name = "tick_step"
+harness = false

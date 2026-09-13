@@ -25,3 +25,18 @@ rand_pcg = "0.3"
 blake3 = "1"
 ulid = "1"
 rusqlite = { version = "0.32", features = ["bundled"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+strip = "symbols"
+
+[profile.release.package.tbc-engine]
+opt-level = 3
+
+[profile.release.package.tbc-server]
+opt-level = 3
+
+[profile.release.package.tbc-gateway]
+opt-level = 3
