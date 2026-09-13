@@ -1,0 +1,12 @@
+{
+  "name": "TBC Engine (Rust)",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "user": "ubuntu",
+  "install": "./scripts/cloud-agent-install.sh",
+  "repositoryDependencies": [
+    "github.com/alexdepasquale2-jpg/hades-engine"
+  ]
+}
