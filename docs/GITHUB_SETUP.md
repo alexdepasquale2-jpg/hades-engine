@@ -23,7 +23,8 @@ Alternative empty repo: `alexdepasquale2-jpg/bigmmo` (change `GITHUB_REPO` in th
 
 ## Option B — Personal access token (one-shot)
 
-1. Create a fine-grained or classic PAT with **Contents: Read and write** on `hades-engine`.
+1. Create a fine-grained or classic PAT with **Contents: Read and write** on `hades-engine` (classic: `repo` scope).
+   Fine-grained: select repository **hades-engine** and set **Contents** to Read and write.
 2. Export it and run from this repo root:
 
    ```bash
