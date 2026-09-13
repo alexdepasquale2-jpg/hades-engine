@@ -34,7 +34,7 @@ fn pmr_200_entities_stays_within_budget() {
         }
     }
 
-    let mut registry = IuocRegistry::new();
+    let registry = IuocRegistry::new();
     let mut within_ticks = 0;
     for _ in 0..600 {
         frame.step_once(&mut ledger, &registry);

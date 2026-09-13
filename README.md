@@ -35,3 +35,5 @@ Release profile: fat LTO, single codegen unit, strip.
 - `RulesetRegistry::load_dir("rulesets")` — JSON rules
 
 Apache-2.0 — see [LICENSE](LICENSE), [CHANGELOG](CHANGELOG.md).
+
+**GitHub:** metadata points at [alexdepasquale2-jpg/hades-engine](https://github.com/alexdepasquale2-jpg/hades-engine). First-time publish steps: [docs/GITHUB_SETUP.md](docs/GITHUB_SETUP.md).
