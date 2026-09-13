@@ -9,6 +9,12 @@ Rust library: AUM core, PMR/NPMR frames, entropy ledger, netcode rewind, shardin
 | `tbc-engine/` | Crate source, tests, `tick_step` bench |
 | `rulesets/*.json` | PMR / NPMR Academy / NPMR Dream rules |
 
+## Local dev dashboard
+
+Track and run the same checks as CI from your machine (tests, release build, fmt, clippy, packaging dry-run). History is stored under `dashboard/.data/`.
+
+**Windows:** double-click [`run-dashboard.bat`](run-dashboard.bat) in the repo root, or run `.\run-dashboard.ps1`. Opens http://localhost:8501 (needs Python 3.10+ and `cargo` on PATH).
+
 ## Commands
 
 ```bash
