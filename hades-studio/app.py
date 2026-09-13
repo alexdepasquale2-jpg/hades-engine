@@ -2,14 +2,15 @@
 
 from __future__ import annotations
 
+from studio_lib.bootstrap import install_paths
+
+install_paths()
+
 import streamlit as st
 
-from studio_lib.bootstrap import install_paths
 from studio_lib.project import init_project_state, sync_ruleset_from_pack
 from studio_lib.theme import STUDIO_CSS
 from views import assets, build, mechanics, play, project, scene
-
-install_paths()
 
 st.set_page_config(
     page_title="Hades Studio",
