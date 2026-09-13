@@ -24,7 +24,7 @@ impl WireConsentStamp {
         }
     }
 
-    pub fn from_grant(target: IuocId, helper: IuocId, scope: &str, expires_tick: u64) -> Self {
+    pub fn from_grant(target: IuocId, _helper: IuocId, scope: &str, expires_tick: u64) -> Self {
         Self {
             target: target.0,
             scope: scope.into(),
@@ -52,7 +52,6 @@ pub fn verify_consent_stamp(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::types::Vec3;
 
     #[test]
     fn wire_stamp_verifies_after_grant() {

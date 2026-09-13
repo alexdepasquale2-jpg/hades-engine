@@ -2,7 +2,7 @@
 
 use tbc_engine::aum::AumCore;
 use tbc_engine::intent::{Intent, Verb};
-use tbc_engine::types::{FwauId, Vec3};
+use tbc_engine::types::Vec3;
 
 #[test]
 fn assist_applies_on_tick_step_from_pending_intent() {

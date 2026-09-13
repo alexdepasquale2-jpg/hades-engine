@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RwwMessage {
@@ -35,6 +35,7 @@ impl RwwConfig {
 }
 
 mod memory;
+#[cfg(feature = "nats")]
 mod nats;
 
 pub use memory::MemoryStore;
@@ -43,6 +44,7 @@ pub use memory::MemoryStore;
 #[derive(Clone)]
 pub struct RwwBus {
     store: Arc<MemoryStore>,
+    #[cfg(feature = "nats")]
     nats: Option<nats::NatsBridge>,
     status: RwwStatus,
 }
@@ -61,6 +63,7 @@ impl RwwBus {
 
     /// Share the in-memory store across processes in tests or single-host multi-node dev.
     pub fn with_store(config: RwwConfig, store: Arc<MemoryStore>) -> Self {
+        #[cfg(feature = "nats")]
         if let Some(url) = config.nats_url.clone() {
             match nats::NatsBridge::connect(&url, &config.stream_name, store.clone()) {
                 Ok(bridge) => {
@@ -81,8 +84,16 @@ impl RwwBus {
             }
         }
 
+        #[cfg(not(feature = "nats"))]
+        if config.nats_url.is_some() {
+            tracing::warn!(
+                "TBC_NATS_URL is set but tbc-engine was built without the `nats` feature; using in-memory RWW only"
+            );
+        }
+
         Self {
             store,
+            #[cfg(feature = "nats")]
             nats: None,
             status: RwwStatus {
                 backend: "memory".into(),
@@ -110,6 +121,7 @@ impl RwwBus {
             at_tick,
         };
         self.store.insert(msg.clone(), durable);
+        #[cfg(feature = "nats")]
         if let Some(nats) = &self.nats {
             nats.publish(msg, durable);
         }

@@ -12,6 +12,11 @@ keywords.workspace = true
 categories.workspace = true
 description = "The Big Computer — MBT-Native MMORPG Engine core"
 
+[features]
+default = []
+# JetStream replication for RWW (`TBC_NATS_URL`). Without this, RWW is in-memory only.
+nats = ["dep:async-nats", "dep:tokio", "dep:futures-util"]
+
 [dependencies]
 serde.workspace = true
 serde_json.workspace = true
@@ -21,10 +26,10 @@ rand_pcg.workspace = true
 blake3.workspace = true
 ulid.workspace = true
 rusqlite.workspace = true
-async-nats = "0.38"
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-futures-util = "0.3"
 tracing.workspace = true
+async-nats = { version = "0.38", optional = true }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"], optional = true }
+futures-util = { version = "0.3", optional = true }
 
 [dev-dependencies]
 

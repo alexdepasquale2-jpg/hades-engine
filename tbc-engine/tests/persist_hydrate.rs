@@ -2,7 +2,7 @@
 
 use tbc_engine::iuoc::IuocRegistry;
 use tbc_engine::persist::SoulArchive;
-use tbc_engine::types::{FrameId, FwauId, IuocId, QualityScalar, Tick};
+use tbc_engine::types::{FrameId, FwauId, QualityScalar, Tick};
 
 #[test]
 fn hydrate_after_restart() {

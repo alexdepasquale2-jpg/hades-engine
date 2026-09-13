@@ -72,7 +72,7 @@ impl NetcodeState {
         hash
     }
 
-    pub fn store_snapshot(&mut self, tick: Tick, mut poses: Vec<EntityPose>) {
+    pub fn store_snapshot(&mut self, tick: Tick, poses: Vec<EntityPose>) {
         let checksum = Self::checksum(&poses);
         let snap = TickSnapshot {
             tick,

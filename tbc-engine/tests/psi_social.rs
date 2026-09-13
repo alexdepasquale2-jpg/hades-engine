@@ -1,7 +1,7 @@
 //! M15 — psi scopes, Speak, and Consent pacts.
 
 use tbc_engine::aum::AumCore;
-use tbc_engine::types::{FwauId, IuocId, Vec3};
+use tbc_engine::types::Vec3;
 
 #[test]
 fn psi_future_self_spend_budget() {

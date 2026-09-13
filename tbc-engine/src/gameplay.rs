@@ -3,7 +3,6 @@
 use crate::ecs::World;
 use crate::frame::Frame;
 use crate::ledger::{EntropyLedger, ResolvedAction};
-use crate::ruleset::{AttackPolicy, InteractPolicy};
 use crate::types::{Entity, FwauId, IuocId, Tick, Vec3};
 use serde::{Deserialize, Serialize};
 
@@ -148,15 +147,14 @@ impl Frame {
             rec.dirty = true;
         }
 
-        let mut target_hp;
-        let mut killed = false;
         let now = self.now().0;
         let attacker_iuoc = self.iuoc_for_fwau(fwau);
 
-        if let Some(rec) = self.world.get_mut(target_entity) {
+        let (target_hp, killed) = if let Some(rec) = self.world.get_mut(target_entity) {
             if let Some(avatar) = &mut rec.avatar {
                 avatar.hp -= policy.damage;
-                target_hp = avatar.hp;
+                let target_hp = avatar.hp;
+                let mut killed = false;
                 if avatar.hp <= 0.0 {
                     avatar.hp = 0.0;
                     avatar.dead = true;
@@ -164,12 +162,13 @@ impl Frame {
                     rec.velocity.linear = Vec3::ZERO;
                 }
                 rec.dirty = true;
+                (target_hp, killed)
             } else {
                 return fail_attack("Target cannot be harmed");
             }
         } else {
             return fail_attack("Target missing");
-        }
+        };
 
         if let Some(iuoc) = attacker_iuoc {
             ledger.enqueue_consequence(
@@ -396,7 +395,7 @@ mod tests {
     use crate::frame::{Frame, FrameSpec};
     use crate::iuoc::IuocRegistry;
     use crate::ruleset::Ruleset;
-    use crate::types::{FrameId, IuocId};
+    use crate::types::FrameId;
 
     #[test]
     fn attack_reduces_ai_hp() {

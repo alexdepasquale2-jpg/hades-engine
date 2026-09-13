@@ -130,25 +130,23 @@ impl Frame {
         }
 
         let now = self.now().0;
-        let mut healed = 0.0;
-        let mut target_hp = 0.0;
-
-        if let Some(rec) = self.world.get_mut(target_entity) {
+        let (healed, target_hp) = if let Some(rec) = self.world.get_mut(target_entity) {
             if let Some(avatar) = &mut rec.avatar {
                 let before = avatar.hp;
                 avatar.hp = (avatar.hp + policy.heal_amount).min(100.0);
-                healed = avatar.hp - before;
-                target_hp = avatar.hp;
+                let healed = avatar.hp - before;
+                let target_hp = avatar.hp;
                 if avatar.dead && avatar.hp > 0.0 {
                     avatar.dead = false;
                 }
                 rec.dirty = true;
+                (healed, target_hp)
             } else {
                 return fail_assist("Target cannot receive assist");
             }
         } else {
             return fail_assist("Target missing");
-        }
+        };
 
         if let Some(iuoc_id) = helper_iuoc {
             ledger.enqueue_consequence(
@@ -207,7 +205,6 @@ pub fn fail_assist(msg: &str) -> AssistResult {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::aum::AumCore;
     use crate::types::Vec3;
 

@@ -1,4 +1,4 @@
-use crate::types::{IuocId, QualityScalar};
+use crate::types::QualityScalar;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

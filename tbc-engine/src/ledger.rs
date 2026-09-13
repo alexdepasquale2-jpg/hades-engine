@@ -23,6 +23,7 @@ pub struct ResolvedAction {
 struct PendingDelta {
     actor: IuocId,
     delta: f32,
+    #[allow(dead_code)]
     action_id: u128,
 }
 

@@ -9,7 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Repository trimmed to **`tbc-engine`** only (removed debug HTTP server, QUIC gateway, SDK, web UI, Docker/ops). Host binaries belong in separate repos or your game project.
+- Repository trimmed to **`tbc-engine`** only (removed debug HTTP server, QUIC gateway, SDK, web UI, Docker/ops).
+- **Default build** no longer pulls `tokio` / `async-nats`; enable **`nats`** Cargo feature for JetStream RWW.
+- Compiler warning cleanup in hot paths.
 
 ### Added
 

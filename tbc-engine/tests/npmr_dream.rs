@@ -2,7 +2,7 @@
 
 use tbc_engine::aum::AumCore;
 use tbc_engine::ruleset::RulesetRegistry;
-use tbc_engine::types::{FwauId, Vec3};
+use tbc_engine::types::Vec3;
 
 #[test]
 fn handoff_policy_blocks_invalid_target() {

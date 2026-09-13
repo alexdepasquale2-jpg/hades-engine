@@ -1,7 +1,9 @@
-//! Optional NATS JetStream integration test (requires running NATS with -js).
+//! Optional NATS JetStream integration test (requires `nats` feature + running NATS with -js).
 
+#[cfg(feature = "nats")]
 use tbc_engine::rww::{RwwBus, RwwConfig};
 
+#[cfg(feature = "nats")]
 #[test]
 #[ignore = "requires NATS at TBC_NATS_URL"]
 fn nats_publish_roundtrip() {

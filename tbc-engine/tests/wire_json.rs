@@ -5,7 +5,9 @@ use tbc_engine::wire_json::compat;
 struct MoveBody {
     #[serde(with = "compat")]
     fwau: u128,
+    #[allow(dead_code)]
     dx: f32,
+    #[allow(dead_code)]
     dy: f32,
 }
 
