@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from mech_lib.ruleset_io import ensure_verb_defaults
+from mech_lib.ruleset_io import apply_patches, ensure_verb_defaults
 
 
 def sync_draft_from_widgets(
@@ -50,73 +50,56 @@ def sync_draft_from_widgets(
     crdt_props: str,
     crdt_presence: str,
 ) -> dict[str, Any]:
-    data = deepcopy(draft)
-    data["id"] = ruleset_id.strip()
-    data["title"] = title.strip()
-    data["tightness"] = round(tightness, 3)
-    data["dt_ms"] = int(dt_ms)
-    data.setdefault("clock", {"parent": None, "n": 1, "k": 1})
-    data["motion"] = {
-        "gravity": gravity,
-        "max_speed": max_speed,
-        "air_control": air_control,
-        "blink": blink,
-        "c_info_m_s": c_info,
-    }
-    data["conservation"] = {"items": cons_items}
-    if cons_currency.strip():
-        data["conservation"]["currency"] = cons_currency.strip()
-    if clone_tax is not None and cons_items == "clone-tax":
-        data["conservation"]["clone_tax_entropy"] = clone_tax
-    data["death"] = {
-        "unbind": death_unbind,
-        "park_s": death_park,
-        "rewind_s": death_rewind,
-    }
-    data["psi"] = {
-        "enabled": psi_enabled,
-        "base_cost": psi_cost,
-        "scopes": list(psi_scopes),
-    }
-    data["sleep"] = {
-        "delay_s": sleep_delay,
-        "kinematic_wake": sleep_kinematic,
+    patches: dict[str, Any] = {
+        "id": ruleset_id.strip(),
+        "title": title.strip(),
+        "tightness": round(tightness, 3),
+        "dt_ms": int(dt_ms),
+        "motion.gravity": gravity,
+        "motion.max_speed": max_speed,
+        "motion.air_control": air_control,
+        "motion.blink": blink,
+        "motion.c_info_m_s": c_info,
+        "conservation.items": cons_items,
+        "death.unbind": death_unbind,
+        "death.park_s": death_park,
+        "death.rewind_s": death_rewind,
+        "psi.enabled": psi_enabled,
+        "psi.base_cost": psi_cost,
+        "psi.scopes": list(psi_scopes),
+        "sleep.delay_s": sleep_delay,
+        "sleep.kinematic_wake": sleep_kinematic,
+        "verbs.attack.enabled": atk_enabled,
+        "verbs.attack.damage": atk_damage,
+        "verbs.attack.range_m": atk_range,
+        "verbs.attack.stamina_cost": atk_stamina,
+        "verbs.attack.harm_entropy": atk_entropy,
+        "verbs.interact.enabled": int_enabled,
+        "verbs.interact.range_m": int_range,
+        "verbs.interact.item_prefix": int_prefix.strip() or "echo",
+        "verbs.speak.enabled": spk_enabled,
+        "verbs.speak.range_m": spk_range,
+        "verbs.assist.enabled": ast_enabled,
+        "verbs.assist.range_m": ast_range,
+        "verbs.assist.stamina_cost": ast_stamina,
+        "verbs.assist.heal_amount": ast_heal,
+        "verbs.assist.aid_entropy": ast_entropy,
+        "verbs.assist.ai_practice": ast_ai,
     }
     targets = [t.strip() for t in handoff_targets.split(",") if t.strip()]
-    data["handoff"] = {"allowed_targets": targets}
-    data["verbs"] = ensure_verb_defaults(data.get("verbs", {}))
-    data["verbs"]["attack"] = {
-        "enabled": atk_enabled,
-        "damage": atk_damage,
-        "range_m": atk_range,
-        "stamina_cost": atk_stamina,
-        "harm_entropy": atk_entropy,
-    }
-    data["verbs"]["interact"] = {
-        "enabled": int_enabled,
-        "range_m": int_range,
-        "item_prefix": int_prefix.strip() or "echo",
-    }
-    data["verbs"]["speak"] = {
-        "enabled": spk_enabled,
-        "range_m": spk_range,
-    }
-    data["verbs"]["assist"] = {
-        "enabled": ast_enabled,
-        "range_m": ast_range,
-        "stamina_cost": ast_stamina,
-        "heal_amount": ast_heal,
-        "aid_entropy": ast_entropy,
-        "ai_practice": ast_ai,
-    }
+    patches["handoff.allowed_targets"] = targets
+    if cons_currency.strip():
+        patches["conservation.currency"] = cons_currency.strip()
+    if clone_tax is not None and cons_items == "clone-tax":
+        patches["conservation.clone_tax_entropy"] = clone_tax
+    out = apply_patches(draft, patches)
     if crdt_enabled:
-        data["crdt"] = {
-            "props": crdt_props,
-            "presence": crdt_presence or None,
-        }
+        out["crdt"] = {"props": crdt_props, "presence": crdt_presence or None}
     else:
-        data.pop("crdt", None)
-    return data
+        out.pop("crdt", None)
+    out.setdefault("clock", {"parent": None, "n": 1, "k": 1})
+    out["verbs"] = ensure_verb_defaults(out.get("verbs", {}))
+    return out
 
 
 def read_widget_defaults(draft: dict[str, Any]) -> dict[str, Any]:
@@ -174,3 +157,33 @@ def read_widget_defaults(draft: dict[str, Any]) -> dict[str, Any]:
         "crdt_props": str(crdt.get("props", "or-set")),
         "crdt_presence": str(crdt.get("presence") or ""),
     }
+
+
+def summary_metrics(draft: dict[str, Any]) -> dict[str, str]:
+    verbs = ensure_verb_defaults(draft.get("verbs", {}))
+    on = sum(1 for k in ("attack", "interact", "speak", "assist") if verbs[k].get("enabled"))
+    motion = draft.get("motion", {})
+    return {
+        "Ruleset": draft.get("id", "?"),
+        "Title": draft.get("title", "?"),
+        "Tick": f"{draft.get('dt_ms', '?')} ms",
+        "Tightness": f"{draft.get('tightness', 0):.2f}",
+        "Max speed": f"{motion.get('max_speed', '?')}",
+        "Verbs on": f"{on}/4",
+        "Blink": "yes" if motion.get("blink") else "no",
+        "Psi": "on" if draft.get("psi", {}).get("enabled") else "off",
+    }
+
+
+def apply_json_merge(draft: dict[str, Any], raw: str) -> tuple[dict[str, Any], str | None]:
+    import json
+
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        return draft, str(exc)
+    if not isinstance(parsed, dict):
+        return draft, "Root must be a JSON object"
+    merged = deepcopy(draft)
+    merged.update(parsed)
+    return merged, None

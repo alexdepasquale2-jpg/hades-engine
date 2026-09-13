@@ -27,7 +27,7 @@ Set `HADES_REPO_ROOT` if you launch the binary from outside the repo (must conta
 
 Design **game mechanics**: browse what `tbc-engine` implements (verbs, motion, psi, death, handoffs), edit **ruleset JSON** visually, and save **custom extensions** (patch bundles + design notes) under `mechanics/extensions/`.
 
-**Windows:** double-click [`run-mechanics-forge.bat`](run-mechanics-forge.bat) (port **8503**).
+**Windows:** double-click [`run-mechanics-forge.bat`](run-mechanics-forge.bat) (port **8503**). Workbench UI: section forms with **Apply**, undo/redo, baseline diff, ruleset compare, JSON source mode, and patch-table extensions.
 
 ## Asset Forge
 
