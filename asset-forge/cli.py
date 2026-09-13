@@ -11,6 +11,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from forge_lib.entities import default_entity, write_entity
+from forge_lib.templates import apply_archetype
 from forge_lib.packs import create_pack, list_pack_ids, list_ruleset_ids, register_entity_in_manifest
 from forge_lib.ruleset import scaffold_ruleset_variant
 from forge_lib.sprites import generate_all_sprites
@@ -24,9 +25,9 @@ def cmd_init_starter(_: argparse.Namespace) -> int:
         return 0
     create_pack(pack_id, "Starter slice", "pmr.v1", "Tutorial NPCs and props for PMR-Prime.")
     entities = [
-        default_entity("npc.mentor", "Mentor", kind="npc", brain_seed=42),
-        default_entity("prop.echo_gate", "Echo Gate", kind="prop", interactable=True, hp=1, stamina=0),
-        default_entity("pickup.shard", "Shard", kind="pickup", interactable=True, hp=1, stamina=0),
+        apply_archetype("mentor", "npc.mentor", "Mentor", sprite_seed=42),
+        apply_archetype("echo_gate", "prop.echo_gate", "Echo Gate", sprite_seed=43),
+        apply_archetype("loot_shard", "pickup.shard", "Shard", sprite_seed=44),
     ]
     for ent in entities:
         path = write_entity(pack_id, ent)

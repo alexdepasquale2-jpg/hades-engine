@@ -11,7 +11,7 @@ Rust library: AUM core, PMR/NPMR frames, entropy ledger, netcode rewind, shardin
 
 ## Asset Forge
 
-Standalone tool to author **content packs** (entities, placeholder sprites, pack manifests) under `assets/`, and to fork or validate **ruleset** JSON.
+Standalone **Asset Studio** to author full game assets in-app (procedural sprites, stats, placement, lore) and export content packs under `assets/`, plus ruleset fork/validate.
 
 **Windows:** double-click [`run-asset-forge.bat`](run-asset-forge.bat) (port **8502**), or:
 

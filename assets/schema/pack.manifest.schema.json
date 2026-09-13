@@ -18,6 +18,19 @@
       "type": "array",
       "items": { "type": "string" },
       "minItems": 0
+    },
+    "placements": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["entity", "x", "y"],
+        "properties": {
+          "entity": { "type": "string" },
+          "x": { "type": "number" },
+          "y": { "type": "number" },
+          "z": { "type": "number" }
+        }
+      }
     }
   }
 }

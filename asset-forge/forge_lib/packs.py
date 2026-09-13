@@ -62,3 +62,22 @@ def register_entity_in_manifest(pack_id: str, entity_rel_path: str) -> None:
     if rel not in manifest["entities"]:
         manifest["entities"].append(rel)
         save_manifest(pack_id, manifest)
+
+
+def upsert_placement(
+    pack_id: str,
+    entity_rel: str,
+    x: float,
+    y: float,
+    z: float = 0.0,
+) -> None:
+    manifest = load_manifest(pack_id)
+    rel = entity_rel.replace("\\", "/")
+    placements: list[dict] = manifest.setdefault("placements", [])
+    for entry in placements:
+        if entry.get("entity") == rel:
+            entry.update({"x": x, "y": y, "z": z})
+            save_manifest(pack_id, manifest)
+            return
+    placements.append({"entity": rel, "x": x, "y": y, "z": z})
+    save_manifest(pack_id, manifest)

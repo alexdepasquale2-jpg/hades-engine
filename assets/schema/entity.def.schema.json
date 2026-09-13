@@ -13,6 +13,8 @@
     "version": { "type": "integer", "minimum": 1 },
     "display_name": { "type": "string", "minLength": 1 },
     "kind": { "enum": ["npc", "prop", "pickup", "player_spawn"] },
+    "archetype": { "type": "string" },
+    "lore": { "type": "string" },
     "tags": {
       "type": "array",
       "items": { "type": "string" }
@@ -55,6 +57,21 @@
       "properties": {
         "path": { "type": "string" },
         "size": { "type": "integer", "minimum": 8, "maximum": 512 }
+      }
+    },
+    "sprite_gen": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "integer" },
+        "seed": { "type": "integer" },
+        "size": { "type": "integer", "minimum": 8, "maximum": 512 },
+        "shape": { "type": "string" },
+        "pattern": { "type": "string" },
+        "glyph": { "type": "string" },
+        "primary": { "type": "string" },
+        "accent": { "type": "string" },
+        "glow_strength": { "type": "number", "minimum": 0, "maximum": 1 },
+        "outline": { "type": "boolean" }
       }
     }
   }
